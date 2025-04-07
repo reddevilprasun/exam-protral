@@ -7,6 +7,8 @@ import { useCurrentUniversity } from "../api/use-current-university";
 import { Loading } from "@/components/Loading";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { RoleDashboard } from "../components/role-dashboard";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function DashboardPage() {
   const { data: user, isLoading: userLoading } = useCurrentUser();
@@ -37,7 +39,11 @@ export default function DashboardPage() {
       <div className="container">
         <div className="mb-8 flex items-center justify-between">
           <div>
+            <div className="flex items-center space-x-2">
+
+            <SidebarTrigger size="lg" />
             <h1 className="text-3xl font-bold">Dashboard</h1>
+            </div>
             <p className="text-muted-foreground">
               Welcome back, {user.firstName} {user.lastName}
             </p>
@@ -70,7 +76,7 @@ export default function DashboardPage() {
         )}
 
         {/* Render the appropriate dashboard based on user role */}
-        {/* <RoleDashboard role={user.role} user={user} /> */}
+        <RoleDashboard role={user.universityRole} user={user} />
       </div>
     </main>
   );
