@@ -26,6 +26,8 @@ import {
   Users,
   Plus,
   FileText,
+  Building,
+  BookText,
 } from "lucide-react";
 import { useCurrentUser } from "../api/use-current-user";
 
@@ -40,8 +42,10 @@ export function ExamSidebar() {
         return [
           { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
           { name: "Users", icon: Users, href: "/user-management" },
-          { name: "Exams", icon: BookOpen, href: "/exam-management" },
+          { name: "Departments", icon: Building, href: "/department-management" },
+          { name: "Subjects", icon: BookText, href: "/subject-management" },
           { name: "Batches", icon: GraduationCap, href: "/batch-management" },
+          { name: "Exams", icon: BookOpen, href: "/exam-management" },
           { name: "Reports", icon: BarChart3, href: "/reports" },
           { name: "Settings", icon: Settings, href: "/university-management" },
         ];

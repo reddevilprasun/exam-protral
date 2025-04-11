@@ -1,13 +1,13 @@
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useCurrentUser } from "../api/use-current-user";
+import { useCurrentUser } from "../../api/use-current-user";
 import { Clock } from "lucide-react";
-import { useCurrentUniversity } from "../api/use-current-university";
+import { useCurrentUniversity } from "../../api/use-current-university";
 import { Loading } from "@/components/Loading";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { RoleDashboard } from "../components/role-dashboard";
+import { RoleDashboard } from "../../components/role-dashboard";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function DashboardPage() {

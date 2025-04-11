@@ -60,3 +60,20 @@ export async function checkAdminUser(ctx: QueryCtx, userId: Id<"users">) {
   }
   return user;
 }
+
+export async function checkUserRole(ctx: QueryCtx, userId: Id<"users">, role: string, universityId: Id<"universities">) {
+  const user = await ctx.db
+    .query("universityRoles")
+    .withIndex("uniq_user_university_role", (q) => q.eq("userId", userId).eq("universityId",universityId))
+    .unique();
+  if (!user) {
+    return false;
+  }
+  if (user.universityId !== universityId) {
+    return false;
+  }
+  if (user.role !== role) {
+    return false;
+  }
+  return true;
+}
