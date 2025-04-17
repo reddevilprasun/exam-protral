@@ -35,14 +35,13 @@ export default function DashboardPage() {
   if (isLoading) return <Loading />;
   if (!user) return <div>Please sign in to access the dashboard.</div>;
   return (
-    <main className="flex-1 p-6">
+    <main className="flex-1 items-start p-6">
       <div className="container">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-2">
-
-            <SidebarTrigger size="lg" />
-            <h1 className="text-3xl font-bold">Dashboard</h1>
+              <SidebarTrigger size="lg" />
+              <h1 className="text-3xl font-bold">Dashboard</h1>
             </div>
             <p className="text-muted-foreground">
               Welcome back, {user.firstName} {user.lastName}

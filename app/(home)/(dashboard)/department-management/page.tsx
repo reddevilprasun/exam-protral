@@ -40,15 +40,6 @@ export default function DepartmentManagementPage() {
 
   return (
     <div className="p-6 container">
-      <div className="mb-8">
-        <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold">Department Management</h1>
-        </div>
-        <p className="text-muted-foreground">
-          Manage departments for your university
-        </p>
-      </div>
-
       <div className="mb-6 flex justify-between">
         <div className="flex items-center gap-2">
           <Building className="h-5 w-5 text-muted-foreground" />

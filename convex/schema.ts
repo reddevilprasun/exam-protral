@@ -73,7 +73,8 @@ export default defineSchema({
     academicYear: v.string(),
     startDate: v.float64(),
     endDate: v.float64(),
-  }),
+  })
+  .index("uniq_batch_course", ["courseId", "name"]),
   subjects: defineTable({
     courseId: v.id("courses"),
     name: v.string(),
@@ -90,7 +91,7 @@ export default defineSchema({
     batchId: v.id("batches"),
     enrollmentDate: v.float64(),
   })
-  .index("uniq_student_batch", ["studentId", "batchId"]),
+  .index("uniq_student_batch", ["batchId", "studentId"]),
   //Teaching Assignments
   teachingAssignments: defineTable({
     teacherId: v.id("users"),

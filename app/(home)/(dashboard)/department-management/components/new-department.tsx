@@ -10,11 +10,9 @@ import { useNewDepartment } from "../hooks/use-new-department";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
 import { CreateDepartmentForm } from "./create-department-form";
-type formValues = {
-  name: string;
-  code: string;
-  description: string;
-};
+import { FunctionArgs } from "convex/server";
+import { api } from "@/convex/_generated/api";
+type formValues = FunctionArgs<typeof api.university.createDepartment>;
 export const NewDepartmentSheet = () => {
   const { isOpen, onClose } = useNewDepartment();
   const { mutated, isPending } = useCreateDepartment();

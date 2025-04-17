@@ -77,3 +77,4 @@ export async function checkUserRole(ctx: QueryCtx, userId: Id<"users">, role: st
   }
   return true;
 }
+

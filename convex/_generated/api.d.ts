@@ -17,6 +17,7 @@ import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as customProfile from "../customProfile.js";
 import type * as http from "../http.js";
+import type * as lib_batchInfo from "../lib/batchInfo.js";
 import type * as lib_userInfo from "../lib/userInfo.js";
 import type * as university from "../university.js";
 import type * as user from "../user.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   customProfile: typeof customProfile;
   http: typeof http;
+  "lib/batchInfo": typeof lib_batchInfo;
   "lib/userInfo": typeof lib_userInfo;
   university: typeof university;
   user: typeof user;
