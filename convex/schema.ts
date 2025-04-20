@@ -9,6 +9,7 @@ export default defineSchema({
     firstName: v.string(),
     lastName: v.string(),
     email: v.string(),
+    number: v.optional(v.string()),
     universityId: v.optional(v.id("universities")),
     createdAt: v.float64(),
     updatedAt: v.float64(),
@@ -53,20 +54,50 @@ export default defineSchema({
       v.literal("student"),
       v.literal("teacher"),
       v.literal("admin"),
-      v.literal("supervisor")
+      v.literal("supervisor"),
+      v.literal("examcontroller"),
     )
   }).index("uniq_user_university_role", ["userId", "universityId", "role"]),
 
+  userCreateRequest: defineTable({
+    name: v.string(),
+    email: v.string(),
+    role : v.union(
+      v.literal("student"),
+      v.literal("teacher"),
+      v.literal("admin"),
+      v.literal("supervisor"),
+      v.literal("examcontroller"),
+    ),
+    department: v.optional(v.id("courses")),
+    subjectId: v.optional(v.id("subjects")),
+    universityId: v.id("universities"),
+    batchId: v.id("batches"),
+    status: v.union(
+      v.literal("active"),
+      v.literal("pending")
+    )
+  })
+  .index("uniq_user_create_request", ["email", "universityId"]),
+
   // Academic Structure
+  department: defineTable({
+    universityId: v.id("universities"),
+    name: v.string(),
+    description: v.optional(v.string()),
+  })
+  .index("uniq_department", ["universityId"]),
   courses: defineTable({
     universityId: v.id("universities"),
+    departmentId: v.id("department"),
     name: v.string(),
     code: v.string(),
     description: v.string(),
     createdAt: v.float64(),
     updatedAt: v.float64(),
   })
-  .index("uniq_course_code", ["universityId", "code"]),
+  .index("uniq_course_code", ["universityId","code"])
+  .index("uniq_course_department",["departmentId"]),
   batches: defineTable({
     courseId: v.id("courses"),
     name: v.string(),
@@ -79,6 +110,8 @@ export default defineSchema({
     courseId: v.id("courses"),
     name: v.string(),
     code: v.string(),
+    creditHours: v.float64(),
+    semester: v.float64(),
     description: v.string(),
     createdAt: v.float64(),
     updatedAt: v.float64(),
@@ -97,6 +130,7 @@ export default defineSchema({
     teacherId: v.id("users"),
     batchId: v.id("batches"),
     subjectId: v.id("subjects"),
+    departmentId: v.id("courses"),
     assignmentDate: v.float64(),
   })
   .index("uniq_teacher_batch_subject", ["teacherId", "batchId", "subjectId"]),

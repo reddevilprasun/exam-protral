@@ -3,9 +3,9 @@ import { Id } from "@/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { useCallback, useMemo, useState } from "react";
 
-type ReturnType = Id<"courses"> | null;
+type ReturnType = Id<"department"> | null;
 type RequestType = {
-  id: Id<"courses">;
+  id: Id<"department">;
 }
 
 type Options = {

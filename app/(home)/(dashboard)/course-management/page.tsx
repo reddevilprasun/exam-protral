@@ -11,15 +11,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useGetDepartment } from "./api/use-get-department";
-import { useNewDepartment } from "./hooks/use-new-department";
 import { Loading } from "@/components/Loading";
-import { useOpenDepartment } from "./hooks/use-open-department";
+import { useNewCourse } from "./hooks/use-new-department";
+import { useOpenCourse } from "./hooks/use-open-department";
+import { useGetCourse } from "./api/use-get-department";
 
 export default function DepartmentManagementPage() {
-  const newDepartment = useNewDepartment();
-  const editDepartment = useOpenDepartment();
-  const { data: departments, isLoading } = useGetDepartment();
+  const newCourse = useNewCourse();
+  const editCourse = useOpenCourse();
+  const { data: courses, isLoading } = useGetCourse();
 
   const formatDate = (date: number) => {
     return new Date(date).toLocaleDateString("en-US", {
@@ -30,10 +30,10 @@ export default function DepartmentManagementPage() {
   };
 
   if (isLoading) return <Loading />;
-  if (!departments) {
+  if (!courses) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p>No departments found.</p>
+        <p>No courses found.</p>
       </div>
     );
   }
@@ -43,12 +43,12 @@ export default function DepartmentManagementPage() {
       <div className="mb-6 flex justify-between">
         <div className="flex items-center gap-2">
           <Building className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-xl font-semibold">Departments</h2>
+          <h2 className="text-xl font-semibold">Courses</h2>
         </div>
 
-        <Button onClick={newDepartment.onOpen}>
+        <Button onClick={newCourse.onOpen}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Department
+          Add Course
         </Button>
       </div>
 
@@ -56,29 +56,33 @@ export default function DepartmentManagementPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Department Name</TableHead>
+              <TableHead>Course Name</TableHead>
+              <TableHead>Code</TableHead>
+              <TableHead>Department</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Created On</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {departments.length !== 0 ? (
-              departments.map((department) => (
-                <TableRow key={department._id}>
+            {courses.length !== 0 ? (
+              courses.map((course) => (
+                <TableRow key={course.id}>
                   <TableCell className="font-medium">
-                    {department.name}
+                    {course.name}
                   </TableCell>
+                  <TableCell>{course.code}</TableCell>
+                  <TableCell>{course.department.name}</TableCell>
                   <TableCell className="truncate">
-                    {department.description}
+                    {course.description}
                   </TableCell>
-                  <TableCell>{formatDate(department._creationTime)}</TableCell>
+                  <TableCell>{formatDate(course.createdAt)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => editDepartment.onOpen(department._id)}
+                        onClick={() => editCourse.onOpen(course.id)}
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         Edit

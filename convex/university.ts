@@ -96,7 +96,184 @@ export const getUniversityInfo = query({
 export const createDepartment = mutation({
   args: {
     name: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new ConvexError("User is not authenticated");
+    }
+    if (!user.universityId) {
+      throw new ConvexError("User does not have a university");
+    }
+    const university = await ctx.db.get(user.universityId);
+    if (!university) {
+      throw new ConvexError("University does not exist");
+    }
+    const universityId = university._id;
+
+    // Check if the user is a university supervisor
+    const supervisor = await checkUserRole(
+      ctx,
+      user._id,
+      "supervisor",
+      universityId
+    );
+    if (!supervisor) {
+      throw new ConvexError("User is not a university supervisor");
+    }
+    const departmentId = await ctx.db.insert("department", {
+      name: args.name,
+      description: args.description,
+      universityId: user.universityId,
+    });
+    return departmentId;
+  },
+})
+
+export const updateDepartment = mutation({
+  args: {
+    _id: v.id("department"),
+    name: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new ConvexError("User is not authenticated");
+    }
+    if (!user.universityId) {
+      throw new ConvexError("User does not have a university");
+    }
+    const university = await ctx.db.get(user.universityId);
+    if (!university) {
+      throw new ConvexError("University does not exist");
+    }
+    const universityId = university._id;
+    // Check if the user is a university supervisor
+    const supervisor = await checkUserRole(
+      ctx,
+      user._id,
+      "supervisor",
+      universityId
+    );
+    if (!supervisor) {
+      throw new ConvexError("User is not a university supervisor");
+    }
+    await ctx.db.patch(args._id, {
+      name: args.name,
+      description: args.description,
+    });
+    return args._id;
+  },
+});
+
+export const deleteDepartment = mutation({
+  args: {
+    id: v.id("department"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new ConvexError("User is not authenticated");
+    }
+    if (!user.universityId) {
+      throw new ConvexError("User does not have a university");
+    }
+    const university = await ctx.db.get(user.universityId);
+    if (!university) {
+      throw new ConvexError("University does not exist");
+    }
+    const universityId = university._id;
+    // Check if the user is a university supervisor
+    const supervisor = await checkUserRole(
+      ctx,
+      user._id,
+      "supervisor",
+      universityId
+    );
+    if (!supervisor) {
+      throw new ConvexError("User is not a university supervisor");
+    }
+    await ctx.db.delete(args.id);
+    return args.id;
+  },
+});
+
+export const getDepartment = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new ConvexError("User is not authenticated");
+    }
+    if (!user.universityId) {
+      throw new ConvexError("User does not have a university");
+    }
+    const university = await ctx.db.get(user.universityId);
+    if (!university) {
+      throw new ConvexError("University does not exist");
+    }
+    const universityId = university._id;
+    // Check if the user is a university supervisor
+    const supervisor = await checkUserRole(
+      ctx,
+      user._id,
+      "supervisor",
+      universityId
+    );
+    if (!supervisor) {
+      throw new ConvexError("User is not a university supervisor");
+    }
+    const departments = await ctx.db
+      .query("department")
+      .withIndex("uniq_department", (q) =>
+        q.eq("universityId", universityId)
+      )
+      .collect();
+    return departments;
+  },
+});
+
+export const getDepartmentById = query({
+  args: {
+    id: v.optional(v.id("department")),
+  },
+  handler: async (ctx, args) => {
+    if (!args.id) {
+      return null;
+    }
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new ConvexError("User is not authenticated");
+    }
+    if (!user.universityId) {
+      throw new ConvexError("User does not have a university");
+    }
+    const university = await ctx.db.get(user.universityId);
+    if (!university) {
+      throw new ConvexError("University does not exist");
+    }
+    const universityId = university._id;
+    // Check if the user is a university supervisor
+    const supervisor = await checkUserRole(
+      ctx,
+      user._id,
+      "supervisor",
+      universityId
+    );
+    if (!supervisor) {
+      throw new ConvexError("User is not a university supervisor");
+    }
+    const department = await ctx.db.get(args.id);
+    return department;
+  },
+});
+
+export const createCourse = mutation({
+  args: {
+    name: v.string(),
     code: v.string(),
+    departmentId: v.id("department"),
     description: v.string(),
   },
   handler: async (ctx, args) => {
@@ -113,13 +290,13 @@ export const createDepartment = mutation({
     }
     const universityId = university._id;
     // Check if the department already exists
-    const department = await ctx.db
+    const course = await ctx.db
       .query("courses")
       .withIndex("uniq_course_code", (q) =>
         q.eq("universityId", universityId).eq("code", args.code)
       )
       .unique();
-    if (department) {
+    if (course) {
       throw new ConvexError("Department already exists");
     }
     // Check if the user is a university supervisor
@@ -135,6 +312,7 @@ export const createDepartment = mutation({
     const departmentId = await ctx.db.insert("courses", {
       name: args.name,
       code: args.code,
+      departmentId: args.departmentId,
       description: args.description,
       universityId: user.universityId,
       createdAt: Date.now(),
@@ -144,11 +322,12 @@ export const createDepartment = mutation({
   },
 });
 
-export const updateDepartment = mutation({
+export const updateCourse = mutation({
   args: {
     _id: v.id("courses"),
     name: v.string(),
     code: v.string(),
+    departmentId: v.id("department"),
     description: v.string(),
   },
   handler: async (ctx, args) => {
@@ -187,13 +366,15 @@ export const updateDepartment = mutation({
     await ctx.db.patch(args._id, {
       name: args.name,
       code: args.code,
+      departmentId: args.departmentId,
       description: args.description,
       updatedAt: Date.now(),
     });
     return args._id;
   },
 });
-export const deleteDepartment = mutation({
+
+export const deleteCourse = mutation({
   args: {
     id: v.id("courses"),
   },
@@ -226,7 +407,7 @@ export const deleteDepartment = mutation({
   },
 });
 
-export const getDepartments = query({
+export const getCourse = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -250,15 +431,36 @@ export const getDepartments = query({
     if (!supervisor) {
       throw new ConvexError("User is not a university supervisor");
     }
-    const departments = await ctx.db
-      .query("courses")
-      .withIndex("uniq_course_code", (q) => q.eq("universityId", universityId))
-      .collect();
+    const courses = await ctx.db
+    .query("courses")
+    .withIndex("uniq_course_code", (q) => q.eq("universityId", universityId))
+    .collect();
+    const departments = await Promise.all(
+      courses.map(async (course) => {
+        const department = await ctx.db.get(course.departmentId);
+        if (!department) {
+          throw new ConvexError("Department does not exist");
+        }
+        return {
+          id: course._id,
+          name: course.name,
+          code: course.code,
+          description: course.description,
+          createdAt: course.createdAt,
+          updatedAt: course.updatedAt,
+          department: {
+            id: department._id,
+            name: department.name,
+            description: department.description,
+          },
+        };
+      })
+    );
     return departments;
   },
 });
 
-export const getDepartmentById = query({
+export const getCourseById = query({
   args: {
     id: v.optional(v.id("courses")),
   },
@@ -513,3 +715,5 @@ export const getBatchById = query({
     return batch;
   },
 });
+
+

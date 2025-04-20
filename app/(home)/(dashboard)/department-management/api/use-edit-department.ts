@@ -3,8 +3,8 @@ import { Doc, Id } from "@/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { useCallback, useMemo, useState } from "react";
 
-type ReturnType = Id<"courses"> | null;
-type RequestType = Omit<Doc<"courses">, "createdAt" | "updatedAt" | "universityId" | "_creationTime">;
+type ReturnType = Id<"department"> | null;
+type RequestType = Omit<Doc<"department">, "createdAt" | "updatedAt" | "universityId" | "_creationTime">;
 
 type Options = {
   onSuccess?: (data: string) => void;

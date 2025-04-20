@@ -42,6 +42,7 @@ export function ExamSidebar() {
         return [
           { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
           { name: "Users", icon: Users, href: "/user-management" },
+          { name: "Courses", icon: BookText, href: "/course-management" },
           { name: "Departments", icon: Building, href: "/department-management" },
           { name: "Subjects", icon: BookText, href: "/subject-management" },
           { name: "Batches", icon: GraduationCap, href: "/batch-management" },

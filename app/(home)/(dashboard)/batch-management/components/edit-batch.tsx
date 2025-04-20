@@ -10,12 +10,12 @@ import { ConvexError } from "convex/values";
 import { FunctionArgs } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { CreateBatchForm } from "./create-batch-form";
-import { useGetDepartment } from "../../department-management/api/use-get-department";
 import { useOpenBatch } from "../hooks/use-open-batch";
 import { useGetBatchById } from "../api/use-get-batchById";
 import { useEditBatch } from "../api/use-edit-batch";
 import { useDeleteBatch } from "../api/use-delete-batch";
 import { useConfirmModal } from "@/hooks/use-confirm-model";
+import { useGetCourse } from "../../course-management/api/use-get-department";
 type formValues = FunctionArgs<typeof api.university.createBatch>;
 export const EditBatchSheet = () => {
   const { isOpen, onClose, id } = useOpenBatch();
@@ -26,10 +26,10 @@ export const EditBatchSheet = () => {
     useDeleteBatch();
   const isPending = editMutationPending || deleteMutationPending;
 
-  const departments = useGetDepartment();
-  const departmentOptions = (departments.data || []).map((department) => ({
-    label: department.name,
-    value: department._id,
+  const courses = useGetCourse();
+  const coursesOptions = (courses.data || []).map((course) => ({
+    label: course.name,
+    value: course._id,
   }));
 
   const [confirm, ConfirmationModel] = useConfirmModal(
@@ -113,7 +113,7 @@ export const EditBatchSheet = () => {
             onSubmit={onSubmit}
             disable={isPending}
             onDelete={onDelete}
-            departmentOptions={departmentOptions}
+            coursesOptions={coursesOptions}
           />
         </SheetContent>
       </Sheet>

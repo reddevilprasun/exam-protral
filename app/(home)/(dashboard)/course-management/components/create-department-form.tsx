@@ -14,19 +14,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FunctionArgs } from "convex/server";
+import { api } from "@/convex/_generated/api";
 
 const formSchema = z.object({
   name: z.string().min(2, {
     message: "Department name must be at least 2 characters.",
   }),
+  departmentId: z.string().min(1, {
+    message: "Select a Department.",
+  }),
+  code: z.string().min(2, {
+    message: "Department code must be at least 2 characters.",
+  }),
   description: z.string(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
+type SubmitFormValues = FunctionArgs<typeof api.university.createCourse>;
 
 interface CreateDepartmentFormProps {
-  _id?: Id<"department">;
-  onSubmit: (values: FormValues) => void;
+  _id?: Id<"courses">;
+  onSubmit: (values: SubmitFormValues) => void;
+  departmentOptions: { label: string; value: Id<"department"> }[];
   defaultValues?: FormValues;
   disable?: boolean;
   onDelete?: () => void;
@@ -38,6 +49,7 @@ export const CreateDepartmentForm = ({
   defaultValues,
   disable,
   onDelete,
+  departmentOptions,
 }: CreateDepartmentFormProps) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -45,8 +57,12 @@ export const CreateDepartmentForm = ({
   });
 
   const handleSubmit = (values: FormValues) => {
-    onSubmit(values);
-  };
+      const transformedValues: SubmitFormValues = {
+        ...values,
+        departmentId: values.departmentId as Id<"department">,
+      };
+      onSubmit(transformedValues);
+    };
 
   const handleDelete = () => {
     onDelete?.();
@@ -63,12 +79,57 @@ export const CreateDepartmentForm = ({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Department Name</FormLabel>
+              <FormLabel>Course Name</FormLabel>
               <FormControl>
                 <Input
                   disabled={disable}
                   {...field}
-                  placeholder="e.g. Computer Science"
+                  placeholder="e.g. B-Tech Computer Science"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="departmentId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Department</FormLabel>
+              <FormControl>
+                <Select
+                  disabled={disable}
+                  onValueChange={field.onChange}
+                  value={field.value}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departmentOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="code"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Course Code</FormLabel>
+              <FormControl>
+                <Input
+                  disabled={disable}
+                  {...field}
+                  placeholder="e.g. CS"
                 />
               </FormControl>
               <FormMessage />
@@ -94,7 +155,7 @@ export const CreateDepartmentForm = ({
           )}
         />
         <Button className=" w-full" disabled={disable}>
-          {_id ? "Save Changes" : "Create Department"}
+          {_id ? "Save Changes" : "Create Course"}
         </Button>
         {!!_id && (
           <Button
@@ -105,7 +166,7 @@ export const CreateDepartmentForm = ({
             variant="outline"
           >
             <Trash className=" size-4 mr-2" />
-            Delete Department
+            Delete Course
           </Button>
         )}
       </form>

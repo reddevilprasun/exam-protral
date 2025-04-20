@@ -12,15 +12,15 @@ import { useCreateBatch } from "../api/use-create-batch";
 import { FunctionArgs } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { CreateBatchForm } from "./create-batch-form";
-import { useGetDepartment } from "../../department-management/api/use-get-department";
+import { useGetCourse } from "../../course-management/api/use-get-department";
 type formValues = FunctionArgs<typeof api.university.createBatch>
 export const NewBatchSheet = () => {
   const { isOpen, onClose } = useNewBatch();
   const { mutated, isPending } = useCreateBatch();
-  const departments = useGetDepartment();
-  const departmentOptions = (departments.data || []).map((department) => ({
-    label: department.name,
-    value: department._id,
+  const courses = useGetCourse();
+  const coursesOptions = (courses.data || []).map((course) => ({
+    label: course.name,
+    value: course._id,
   })); 
 
   const onSubmit = (values: formValues) => {
@@ -48,7 +48,7 @@ export const NewBatchSheet = () => {
             Fill in the details to create a new batch.
           </SheetDescription>
         </SheetHeader>
-        <CreateBatchForm onSubmit={onSubmit} disable={isPending} departmentOptions={departmentOptions} />
+        <CreateBatchForm onSubmit={onSubmit} disable={isPending} coursesOptions={coursesOptions} />
       </SheetContent>
     </Sheet>
   );

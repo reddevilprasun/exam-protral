@@ -4,8 +4,8 @@ import { useMutation } from "convex/react";
 import { WithoutSystemFields } from "convex/server";
 import { useCallback, useMemo, useState } from "react";
 
-type ReturnType = Id<"department"> | null;
-type RequestType = Omit<WithoutSystemFields<Doc<"department">>, "createdAt" | "updatedAt" | "universityId">;
+type ReturnType = Id<"courses"> | null;
+type RequestType = Omit<WithoutSystemFields<Doc<"courses">>, "createdAt" | "updatedAt" | "universityId">;
 
 type Options = {
   onSuccess?: (data: string) => void;
@@ -14,7 +14,7 @@ type Options = {
   throwError?: boolean;
 };
 
-export const useCreateDepartment = () => {
+export const useCreateCourse = () => {
   const [data, setData] = useState<ReturnType>(null);
   const [error, setError] = useState<Error | null>(null);
   const [status, setStatus] = useState<
@@ -26,7 +26,7 @@ export const useCreateDepartment = () => {
   const isError = useMemo(() => status === "error", [status]);
   const isSettled = useMemo(() => status === "settled", [status]);
 
-  const mutation = useMutation(api.university.createDepartment);
+  const mutation = useMutation(api.university.createCourse);
 
   const mutated = useCallback(
     async (values:RequestType, options?: Options) => {

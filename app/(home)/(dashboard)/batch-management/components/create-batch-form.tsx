@@ -49,7 +49,7 @@ interface CreateBatchFormProps {
   _id?: Id<"batches">;
   onSubmit: (values: SubmitFormValues) => void;
   defaultValues?: FormValues;
-  departmentOptions: { label: string; value: Id<"courses"> }[];
+  coursesOptions: { label: string; value: Id<"courses"> }[];
   disable?: boolean;
   onDelete?: () => void;
 }
@@ -60,7 +60,7 @@ export const CreateBatchForm = ({
   defaultValues,
   disable,
   onDelete,
-  departmentOptions,
+  coursesOptions,
 }: CreateBatchFormProps) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -120,7 +120,7 @@ export const CreateBatchForm = ({
                     <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departmentOptions.map((option) => (
+                    {coursesOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>

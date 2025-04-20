@@ -11,6 +11,11 @@ export function Header() {
           title: "Department Management",
           description: "Manage departments for your university",
         };
+      case "/course-management":
+        return {
+          title: "Course Management",
+          description: "Manage courses for your university",
+        };
       case "/batch-management":
         return {
           title: "Batch Management",

@@ -8,41 +8,50 @@ import {
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
 import { CreateDepartmentForm } from "./create-department-form";
-import { useEditDepartment } from "../api/use-edit-department";
+import { useEditCourse } from "../api/use-edit-department";
 import { Id } from "@/convex/_generated/dataModel";
-import { useOpenDepartment } from "../hooks/use-open-department";
-import { useDeleteDepartment } from "../api/use-delete-department";
-import { useGetDepartmentById } from "../api/use-get-departmentById";
+import { useOpenCourse } from "../hooks/use-open-department";
+import { useDeleteCourse } from "../api/use-delete-department";
+import { useGetCourseById } from "../api/use-get-departmentById";
 import { useConfirmModal } from "@/hooks/use-confirm-model";
+import { useGetDepartment } from "../../department-management/api/use-get-department";
 type formValues = {
-  _id: Id<"department">;
+  _id: Id<"courses">;
   name: string;
+  departmentId: Id<"department">;
+  code: string;
   description: string;
 };
-export const EditDepartmentSheet = () => {
-  const { isOpen, onClose, id } = useOpenDepartment();
-  const { data: department } = useGetDepartmentById(id);
+export const EditCourseSheet = () => {
+  const { isOpen, onClose, id } = useOpenCourse();
+  const { data: course } = useGetCourseById(id);
   const { mutated: editMutation, isPending: editMutationPending } =
-    useEditDepartment();
+    useEditCourse();
   const { mutated: deleteMutation, isPending: deleteMutationPending } =
-    useDeleteDepartment();
+    useDeleteCourse();
+
+  const departments = useGetDepartment();
+    const departmentOptions = (departments.data || []).map((department) => ({
+      label: department.name,
+      value: department._id,
+    }));
 
   const [confirm, ConfirmationModel] = useConfirmModal(
     "Are you sure?",
-    "Are you sure you want to delete this department? This action cannot be undone."
+    "Are you sure you want to delete this course? This action cannot be undone."
   );
   const isPending = editMutationPending || deleteMutationPending;
 
   const onSubmit = (values: Omit<formValues, "_id">) => {
     if (!id) {
-      toast.error("Department ID is missing.");
+      toast.error("Course ID is missing.");
       return;
     }
     editMutation(
       { _id: id, ...values },
       {
         onSuccess: () => {
-          toast.success("Department edited successfully");
+          toast.success("Course edited successfully");
           onClose();
         },
         onError: (error) => {
@@ -64,7 +73,7 @@ export const EditDepartmentSheet = () => {
       { id },
       {
         onSuccess: () => {
-          toast.success("Department deleted successfully");
+          toast.success("Course deleted successfully");
           onClose();
         },
         onError: (error) => {
@@ -79,10 +88,12 @@ export const EditDepartmentSheet = () => {
   };
 
   const defaultValues = {
-    name: department?.name || "",
-    description: department?.description || "",
+    name: course?.name || "",
+    code: course?.code || "",
+    departmentId: course?.departmentId || "",
+    description: course?.description || "",
   };
-  if (!department) return null;
+  if (!course) return null;
 
   return (
     <>
@@ -90,14 +101,15 @@ export const EditDepartmentSheet = () => {
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent className="space-y-4">
           <SheetHeader>
-            <SheetTitle>Edit Department</SheetTitle>
+            <SheetTitle>Edit Course</SheetTitle>
             <SheetDescription>
-              Update the details of the department.
+              Update the details of the course.
             </SheetDescription>
           </SheetHeader>
           <CreateDepartmentForm
-            _id={department._id}
+            _id={course._id}
             onSubmit={onSubmit}
+            departmentOptions={departmentOptions}
             defaultValues={defaultValues}
             disable={isPending}
             onDelete={onDelete}
