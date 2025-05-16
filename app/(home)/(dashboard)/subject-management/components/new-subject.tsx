@@ -7,26 +7,33 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
-import { useNewBatch } from "../hooks/use-new-batch";
-import { useCreateBatch } from "../api/use-create-batch";
 import { FunctionArgs } from "convex/server";
 import { api } from "@/convex/_generated/api";
-import { CreateBatchForm } from "./create-batch-form";
 import { useGetCourse } from "../../course-management/api/use-get-department";
-type formValues = FunctionArgs<typeof api.university.createBatch>;
-export const NewBatchSheet = () => {
-  const { isOpen, onClose } = useNewBatch();
-  const { mutated, isPending } = useCreateBatch();
+import { useNewSubject } from "../hooks/use-new-subject";
+import { useCreateSubject } from "../api/use-create-subject";
+import { CreateSubjectForm } from "./create-subject-form";
+import { useGetDepartment } from "../../department-management/api/use-get-department";
+type formValues = FunctionArgs<typeof api.university.createSubject>;
+export const NewSubjectSheet = () => {
+  const { isOpen, onClose } = useNewSubject();
+  const { mutated, isPending } = useCreateSubject();
   const courses = useGetCourse();
+  const departments = useGetDepartment();
+  const departmentsOptions = (departments.data || []).map((department) => ({
+    label: department.name,
+    value: department._id,
+  }));
   const coursesOptions = (courses.data || []).map((course) => ({
     label: course?.name,
     value: course?.id,
+    departmentId: course?.department.id,
   }));
 
   const onSubmit = (values: formValues) => {
     mutated(values, {
       onSuccess: () => {
-        toast.success("Batch created successfully");
+        toast.success("Subject created successfully");
         onClose();
       },
       onError: (error) => {
@@ -41,17 +48,18 @@ export const NewBatchSheet = () => {
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="space-y-4">
+      <SheetContent className="space-y-4 w-[500px] sm:w-[400px]">
         <SheetHeader>
-          <SheetTitle>Create New Batch</SheetTitle>
+          <SheetTitle>Create New Subject</SheetTitle>
           <SheetDescription>
-            Fill in the details to create a new batch.
+            Fill in the details to create a new subject.
           </SheetDescription>
         </SheetHeader>
-        <CreateBatchForm
+        <CreateSubjectForm
           onSubmit={onSubmit}
           disable={isPending}
           coursesOptions={coursesOptions}
+          departmentsOptions={departmentsOptions}
         />
       </SheetContent>
     </Sheet>

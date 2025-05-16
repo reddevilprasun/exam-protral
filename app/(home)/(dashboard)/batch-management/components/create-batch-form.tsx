@@ -26,7 +26,7 @@ import { api } from "@/convex/_generated/api";
 
 const formSchema = z.object({
   courseId: z.string().min(1, {
-    message: "Select a Department."
+    message: "Select a Department.",
   }),
   name: z.string().min(2, {
     message: "Batch name must be at least 2 characters.",
@@ -49,7 +49,7 @@ interface CreateBatchFormProps {
   _id?: Id<"batches">;
   onSubmit: (values: SubmitFormValues) => void;
   defaultValues?: FormValues;
-  coursesOptions: { label: string; value: Id<"courses"> }[];
+  coursesOptions: { label: string | undefined; value: Id<"courses"> | undefined }[];
   disable?: boolean;
   onDelete?: () => void;
 }
@@ -120,11 +120,16 @@ export const CreateBatchForm = ({
                     <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {coursesOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    {coursesOptions
+                      ?.filter((option) => option.value)
+                      .map((option) => (
+                        <SelectItem
+                          key={option.value as string}
+                          value={option.value as string}
+                        >
+                          {option.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </FormControl>

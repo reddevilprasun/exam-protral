@@ -110,9 +110,13 @@ export default defineSchema({
     courseId: v.id("courses"),
     name: v.string(),
     code: v.string(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+    ),
     creditHours: v.float64(),
     semester: v.float64(),
-    description: v.string(),
+    description: v.optional(v.string()),
     createdAt: v.float64(),
     updatedAt: v.float64(),
   })

@@ -1,5 +1,4 @@
-import { Id } from "./_generated/dataModel";
-import { MutationCtx, query, QueryCtx } from "./_generated/server";
+import { query } from "./_generated/server";
 import { getCurrentUser, getUserUniversityRole } from "./lib/userInfo";
 
 export const UserInfo = query({
@@ -9,7 +8,14 @@ export const UserInfo = query({
       return null;
     }
     if(!user.universityId) {
-      return null;
+      return {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        universityId: null,
+        universityRole: "Normal User",
+      }
     }
     const userRole = await getUserUniversityRole(ctx, user._id, user.universityId);
     if (!userRole) {
@@ -21,7 +27,7 @@ export const UserInfo = query({
       firstName: user.firstName,
       lastName: user.lastName,
       universityId: user.universityId,
-      universityRole: userRole.role,
+      universityRole: userRole.role || null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

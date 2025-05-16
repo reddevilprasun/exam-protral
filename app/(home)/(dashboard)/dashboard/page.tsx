@@ -16,7 +16,12 @@ export default function DashboardPage() {
     useCurrentUniversity();
   if (!university && !universityLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center flex-col gap-3">
+        <h1 className="text-3xl font-bold">No University Found</h1>
+        <p className="text-muted-foreground">
+          You are not part of any university. Please contact your
+          administrator.
+        </p>
         <Alert>
           <AlertTitle>University Not Found</AlertTitle>
           <AlertDescription>

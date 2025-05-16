@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { LogOut, School, User } from "lucide-react";
 import Link from "next/link";
 import { ModeToggle } from "./mode-toggle";
-import { useCurrentUser } from "../api/use-current-user";
 import { useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Badge } from "@/components/ui/badge";
+import { useCurrentUser } from "../api/use-current-user";
 
 export default function NavBar() {
   const user = useCurrentUser();

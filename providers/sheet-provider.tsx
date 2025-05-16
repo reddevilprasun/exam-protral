@@ -5,6 +5,8 @@ import { EditCourseSheet } from "@/app/(home)/(dashboard)/course-management/comp
 import { NewCourseSheet } from "@/app/(home)/(dashboard)/course-management/components/new-department";
 import { EditDepartmentSheet } from "@/app/(home)/(dashboard)/department-management/components/edit-department";
 import { NewDepartmentSheet } from "@/app/(home)/(dashboard)/department-management/components/new-department";
+import { EditSubjectSheet } from "@/app/(home)/(dashboard)/subject-management/components/edit-subject";
+import { NewSubjectSheet } from "@/app/(home)/(dashboard)/subject-management/components/new-subject";
 import { useMountedState } from "react-use";
 
 
@@ -21,6 +23,8 @@ export const SheetProvider = () => {
       <EditCourseSheet/>
       <NewBatchSheet/>
       <EditBatchSheet/>
+      <NewSubjectSheet/>
+      <EditSubjectSheet/>
     </>
   )
 }
