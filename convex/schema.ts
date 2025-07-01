@@ -179,12 +179,15 @@ export default defineSchema({
     marks: v.float64(),
     difficultyLevel: v.union(
       v.literal("easy"),
-      v.literal("Medium"),
-      v.literal("Hard")
+      v.literal("medium"),
+      v.literal("hard")
     ),
     createdAt: v.float64(),
     updatedAt: v.float64(),
-  }),
+  })
+  .index("uniq_question_subject", ["subjectId", "questionText"])
+  .index("uniq_question_type", ["questionType", "subjectId"])
+  .index("uniq_teacher_question", ["createdBy"]),
 
   // Exam Management
   exams: defineTable({

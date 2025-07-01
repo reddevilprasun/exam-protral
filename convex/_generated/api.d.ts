@@ -19,6 +19,7 @@ import type * as customProfile from "../customProfile.js";
 import type * as http from "../http.js";
 import type * as lib_batchInfo from "../lib/batchInfo.js";
 import type * as lib_userInfo from "../lib/userInfo.js";
+import type * as questions from "../questions.js";
 import type * as university from "../university.js";
 import type * as user from "../user.js";
 
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/batchInfo": typeof lib_batchInfo;
   "lib/userInfo": typeof lib_userInfo;
+  questions: typeof questions;
   university: typeof university;
   user: typeof user;
 }>;

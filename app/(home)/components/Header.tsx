@@ -43,6 +43,18 @@ export function Header() {
         description: "Manage students for your university",
       };
     }
+    if (path.includes("exam-management")) {
+      return {
+        title: "Exam Management",
+        description: "Manage exams and schedules for your university",
+      };
+    }
+    if(path.includes("question-bank")) {
+      return {
+        title: "Question Bank",
+        description: "Manage questions for your university",
+      };
+    }
 
     return { title: "", description: "" };
   };
