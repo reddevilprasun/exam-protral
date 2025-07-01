@@ -7,7 +7,6 @@ import {
   Copy,
   Filter,
   GraduationCap,
-  LayoutDashboard,
   Mail,
   MoreHorizontal,
   RefreshCw,
@@ -29,7 +28,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -47,8 +45,6 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,85 +53,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BookOpen, BarChart, Settings } from "lucide-react";
-
-// Mock data for university users
-const mockUsers = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john@example.com",
-    role: "supervisor",
-    department: "Computer Science",
-    status: "active",
-    createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
-    lastLogin: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane@example.com",
-    role: "teacher",
-    department: "Computer Science",
-    status: "active",
-    createdAt: Date.now() - 25 * 24 * 60 * 60 * 1000,
-    lastLogin: Date.now() - 1 * 24 * 60 * 60 * 1000,
-  },
-  {
-    id: "3",
-    name: "Robert Johnson",
-    email: "robert@example.com",
-    role: "teacher",
-    department: "Electrical Engineering",
-    status: "active",
-    createdAt: Date.now() - 20 * 24 * 60 * 60 * 1000,
-    lastLogin: Date.now() - 3 * 24 * 60 * 60 * 1000,
-  },
-  {
-    id: "4",
-    name: "Emily Davis",
-    email: "emily@example.com",
-    role: "exam_controller",
-    department: "Administration",
-    status: "active",
-    createdAt: Date.now() - 15 * 24 * 60 * 60 * 1000,
-    lastLogin: Date.now() - 1 * 24 * 60 * 60 * 1000,
-  },
-  {
-    id: "5",
-    name: "Michael Brown",
-    email: "michael@example.com",
-    role: "teacher",
-    department: "Business Administration",
-    status: "pending",
-    createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000,
-    lastLogin: null,
-  },
-  {
-    id: "6",
-    name: "Sarah Wilson",
-    email: "sarah@example.com",
-    role: "supervisor",
-    department: "Physics",
-    status: "pending",
-    createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
-    lastLogin: null,
-  },
-];
-
-// Mock data for departments
-const mockDepartments = [
-  { id: "1", name: "Computer Science" },
-  { id: "2", name: "Electrical Engineering" },
-  { id: "3", name: "Mechanical Engineering" },
-  { id: "4", name: "Physics" },
-  { id: "5", name: "Business Administration" },
-  { id: "6", name: "Administration" },
-];
+import CreateUserDialog from "./components/createUserDialog";
+import { FunctionArgs, FunctionReturnType } from "convex/server";
+import { api } from "@/convex/_generated/api";
+import { useCreateUser } from "./api/use-create-user";
+import { ConvexError } from "convex/values";
+import { toast } from "sonner";
+import { useGetCourse } from "../course-management/api/use-get-department";
+import { useGetDepartment } from "../department-management/api/use-get-department";
+import { useGetSubject } from "../subject-management/api/use-get-subject";
+import { useGetUniversityUser } from "./api/use-get-universityUser";
+import { Loading } from "@/components/Loading";
 
 export default function UserManagementPage() {
   const router = useRouter();
-  const [users, setUsers] = useState(mockUsers);
+  const { data:users , isLoading: userLoading} = useGetUniversityUser();
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isInvitationDialogOpen, setIsInvitationDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -143,107 +75,51 @@ export default function UserManagementPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentInvitation, setCurrentInvitation] = useState<any>(null);
-  const [newUser, setNewUser] = useState({
-    name: "",
-    email: "",
-    role: "teacher",
-    department: "",
-    sendInvitation: true,
-    customMessage: "",
-  });
 
-
-  const handleAddUser = () => {
-    if (
-      !newUser.name ||
-      !newUser.email ||
-      !newUser.role ||
-      !newUser.department
-    ) {
-      return;
-    }
-
-    //INFO: Generate a random invitation token
-    const invitationToken = Math.random().toString(36).substring(2, 15);
-
-    // Create new user
-    const newUserData = {
-      id: `new-${Date.now()}`,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-      department: newUser.department,
-      status: "pending",
-      createdAt: Date.now(),
-      lastLogin: null,
-    };
-
-    setUsers([...users, newUserData]);
-
-    // Close the add user dialog
-    setIsAddUserDialogOpen(false);
-
-    // If send invitation is enabled, show the invitation dialog
-    if (newUser.sendInvitation) {
-      setCurrentInvitation({
-        user: newUserData,
-        token: invitationToken,
-        invitationLink: `${window.location.origin}/register/complete?token=${invitationToken}&email=${encodeURIComponent(newUser.email)}`,
-      });
-      setIsInvitationDialogOpen(true);
-    } else {
-      // toast({
-      //   title: "User added",
-      //   description: `${newUser.name} has been added as a ${getRoleLabel(newUser.role)}.`,
-      //   duration: 3000,
-      // })
-    }
-
-    // Reset form
-    setNewUser({
-      name: "",
-      email: "",
-      role: "teacher",
-      department: "",
-      sendInvitation: true,
-      customMessage: "",
+  const { mutated, isPending} = useCreateUser();
+  const courses = useGetCourse();
+  const departments = useGetDepartment();
+  const subJect = useGetSubject();
+  const departmentsOptions = (departments.data || []).map((department) => ({
+    label: department.name,
+    value: department._id,
+  }));
+  const coursesOptions = (courses.data || []).map((course) => ({
+    label: course?.name,
+    value: course?.id,
+    departmentId: course?.department.id,
+  }));
+  const subjectOptions = (subJect.data || []).map((subject) => ({
+    label: subject?.name,
+    value: subject?.id,
+    courseId: subject?.course.id,
+  }));
+  type FormValues = FunctionArgs<typeof api.user.supervisorCreateUser>;
+  const onSubmit = (values: FormValues) => {
+    mutated(values, {
+      onSuccess: () => {
+        toast.success("User created successfully");
+      },
+      onError: (error) => {
+        const errorMessage =
+          error instanceof ConvexError
+            ? (error.data as string)
+            : "An error occurred";
+        toast.error(errorMessage);
+      },
     });
-  };
+  }
 
-  const handleDeleteUser = (id: string) => {
-    // Check if user is a supervisor
-    const userToDelete = users.find((user) => user.id === id);
+  const isLoading = userLoading || departments.isLoading || courses.isLoading || subJect.isLoading;
+  if(isLoading) {
+    return (
+      <Loading/>
+    )
+  }
 
-    if (
-      userToDelete?.role === "supervisor" &&
-      userToDelete.status === "active"
-    ) {
-      // Count active supervisors
-      const activeSupervisors = users.filter(
-        (u) => u.role === "supervisor" && u.status === "active"
-      ).length;
 
-      if (activeSupervisors <= 1) {
-        // toast({
-        //   title: "Cannot delete supervisor",
-        //   description: "You cannot delete the last active supervisor account.",
-        //   variant: "destructive",
-        //   duration: 3000,
-        // })
-        return;
-      }
-    }
-
-    setUsers(users.filter((user) => user.id !== id));
-
-    // toast({
-    //   title: "User deleted",
-    //   description: "The user has been removed from your university.",
-    //   duration: 3000,
-    // })
-  };
-
-  const handleResendInvitation = (user: any) => {
+  type User = NonNullable<FunctionReturnType<typeof api.user.getAllUsersOfUniversity>>[number];
+  const handleResendInvitation = (user: User) => {
     // Generate a new invitation token
     const invitationToken = Math.random().toString(36).substring(2, 15);
 
@@ -258,21 +134,24 @@ export default function UserManagementPage() {
   const handleCopyInvitationLink = () => {
     if (currentInvitation) {
       navigator.clipboard.writeText(currentInvitation.invitationLink);
-      // toast({
-      //   title: "Link copied",
-      //   description: "Invitation link copied to clipboard.",
-      //   duration: 3000,
-      // })
+      toast(
+        "Link copied",
+        {
+        description: "Invitation link copied to clipboard.",
+        duration: 3000,
+      })
     }
   };
 
   const handleSendInvitationEmail = () => {
     // In a real app, this would send an email
-    // toast({
-    //   title: "Invitation sent",
-    //   description: `An invitation email has been sent to ${currentInvitation.user.email}.`,
-    //   duration: 3000,
-    // })
+    toast(
+      "Invitation sent",
+      {
+
+      description: `An invitation email has been sent to ${currentInvitation.user.email}.`,
+      duration: 3000,
+    })
     setIsInvitationDialogOpen(false);
   };
 
@@ -292,7 +171,7 @@ export default function UserManagementPage() {
         return "Supervisor";
       case "teacher":
         return "Teacher";
-      case "exam_controller":
+      case "examcontroller":
         return "Exam Controller";
       case "student":
         return "Student";
@@ -307,7 +186,7 @@ export default function UserManagementPage() {
         return <Badge className="bg-purple-500">Supervisor</Badge>;
       case "teacher":
         return <Badge className="bg-blue-500">Teacher</Badge>;
-      case "exam_controller":
+      case "examcontroller":
         return <Badge className="bg-amber-500">Exam Controller</Badge>;
       case "student":
         return <Badge className="bg-green-500">Student</Badge>;
@@ -338,15 +217,15 @@ export default function UserManagementPage() {
   };
 
   // Filter users based on search query and filters
-  const filteredUsers = users.filter((user) => {
+  const filteredUsers = users?.filter((user) => {
     const matchesSearch = searchQuery
-      ? user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ? `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.email.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
 
-    const matchesRole = roleFilter === "all" ? true : user.role === roleFilter;
+    const matchesRole = roleFilter === "all" ? true : user.universityRole === roleFilter;
     const matchesDepartment =
-      departmentFilter === "all" ? true : user.department === departmentFilter;
+      departmentFilter === "all" ? true : user.departmentName === departmentFilter;
     const matchesStatus =
       statusFilter === "all" ? true : user.status === statusFilter;
 
@@ -355,12 +234,12 @@ export default function UserManagementPage() {
 
   // Get counts for each role
   const userCounts = {
-    all: users.length,
-    supervisor: users.filter((user) => user.role === "supervisor").length,
-    teacher: users.filter((user) => user.role === "teacher").length,
-    exam_controller: users.filter((user) => user.role === "exam_controller")
+    all: users?.length,
+    supervisor: users?.filter((user) => user.universityRole === "supervisor").length,
+    teacher: users?.filter((user) => user.universityRole === "teacher").length,
+    exam_controller: users?.filter((user) => user.universityRole === "examcontroller")
       .length,
-    student: users.filter((user) => user.role === "student").length,
+    student: users?.filter((user) => user.universityRole === "student").length,
   };
 
   return (
@@ -464,8 +343,8 @@ export default function UserManagementPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Departments</SelectItem>
-                    {mockDepartments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.name}>
+                    {departments.data?.map((dept) => (
+                      <SelectItem key={dept._id} value={dept.name}>
                         {dept.name}
                       </SelectItem>
                     ))}
@@ -520,21 +399,21 @@ export default function UserManagementPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredUsers.length === 0 ? (
+                      {filteredUsers?.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={8} className="h-24 text-center">
                             No users found matching your criteria.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredUsers.map((user) => (
+                        filteredUsers?.map((user) => (
                           <TableRow key={user.id}>
                             <TableCell className="font-medium">
-                              {user.name}
+                              {user.firstName} {user.lastName}
                             </TableCell>
                             <TableCell>{user.email}</TableCell>
-                            <TableCell>{getRoleBadge(user.role)}</TableCell>
-                            <TableCell>{user.department}</TableCell>
+                            <TableCell>{getRoleBadge(user.universityRole)}</TableCell>
+                            <TableCell>{user.departmentName}</TableCell>
                             <TableCell>{getStatusBadge(user.status)}</TableCell>
                             <TableCell>{formatDate(user.createdAt)}</TableCell>
                             <TableCell>{formatDate(user.lastLogin)}</TableCell>
@@ -566,7 +445,7 @@ export default function UserManagementPage() {
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     className="text-destructive focus:text-destructive"
-                                    onClick={() => handleDeleteUser(user.id)}
+                                    onClick={() => {}}
                                   >
                                     Delete User
                                   </DropdownMenuItem>
@@ -598,7 +477,7 @@ export default function UserManagementPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredUsers.filter((user) => user.status === "active")
+                      {filteredUsers?.filter((user) => user.status === "active")
                         .length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={7} className="h-24 text-center">
@@ -606,16 +485,15 @@ export default function UserManagementPage() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredUsers
-                          .filter((user) => user.status === "active")
+                        filteredUsers?.filter((user) => user.status === "active")
                           .map((user) => (
                             <TableRow key={user.id}>
                               <TableCell className="font-medium">
-                                {user.name}
+                                {user.firstName} {user.lastName}
                               </TableCell>
                               <TableCell>{user.email}</TableCell>
-                              <TableCell>{getRoleBadge(user.role)}</TableCell>
-                              <TableCell>{user.department}</TableCell>
+                              <TableCell>{getRoleBadge(user.universityRole)}</TableCell>
+                              <TableCell>{user.departmentName}</TableCell>
                               <TableCell>
                                 {formatDate(user.createdAt)}
                               </TableCell>
@@ -645,7 +523,7 @@ export default function UserManagementPage() {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       className="text-destructive focus:text-destructive"
-                                      onClick={() => handleDeleteUser(user.id)}
+                                      onClick={() => {}}
                                     >
                                       Delete User
                                     </DropdownMenuItem>
@@ -676,7 +554,7 @@ export default function UserManagementPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredUsers.filter((user) => user.status === "pending")
+                      {filteredUsers?.filter((user) => user.status === "pending")
                         .length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className="h-24 text-center">
@@ -684,16 +562,15 @@ export default function UserManagementPage() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredUsers
-                          .filter((user) => user.status === "pending")
+                        filteredUsers?.filter((user) => user.status === "pending")
                           .map((user) => (
                             <TableRow key={user.id}>
                               <TableCell className="font-medium">
-                                {user.name}
+                                {user.firstName} {user.lastName}
                               </TableCell>
                               <TableCell>{user.email}</TableCell>
-                              <TableCell>{getRoleBadge(user.role)}</TableCell>
-                              <TableCell>{user.department}</TableCell>
+                              <TableCell>{getRoleBadge(user.universityRole)}</TableCell>
+                              <TableCell>{user.departmentName}</TableCell>
                               <TableCell>
                                 {formatDate(user.createdAt)}
                               </TableCell>
@@ -710,7 +587,7 @@ export default function UserManagementPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => handleDeleteUser(user.id)}
+                                    onClick={() => {}}
                                   >
                                     <Trash className="h-4 w-4" />
                                   </Button>
@@ -728,117 +605,15 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New User</DialogTitle>
-            <DialogDescription>
-              Add a new user to your university. They will receive an email
-              invitation to complete their registration.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                value={newUser.name}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, name: e.target.value })
-                }
-                placeholder="John Doe"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={newUser.email}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, email: e.target.value })
-                }
-                placeholder="john@example.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                value={newUser.role}
-                onValueChange={(value) =>
-                  setNewUser({ ...newUser, role: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="teacher">Teacher</SelectItem>
-                  <SelectItem value="exam_controller">
-                    Exam Controller
-                  </SelectItem>
-                  <SelectItem value="supervisor">Supervisor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Select
-                value={newUser.department}
-                onValueChange={(value) =>
-                  setNewUser({ ...newUser, department: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockDepartments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.name}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="send-invitation"
-                checked={newUser.sendInvitation}
-                onCheckedChange={(checked) =>
-                  setNewUser({ ...newUser, sendInvitation: checked })
-                }
-              />
-              <Label htmlFor="send-invitation">Send invitation email</Label>
-            </div>
-            {newUser.sendInvitation && (
-              <div className="space-y-2">
-                <Label htmlFor="custom-message">
-                  Custom Message (Optional)
-                </Label>
-                <Textarea
-                  id="custom-message"
-                  value={newUser.customMessage}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, customMessage: e.target.value })
-                  }
-                  placeholder="Add a personal message to the invitation email..."
-                  rows={3}
-                />
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddUserDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleAddUser}>Add User</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateUserDialog
+        open={isAddUserDialogOpen}
+        onOpenChange={setIsAddUserDialogOpen}
+        onSubmit={onSubmit}
+        departmentsOptions={departmentsOptions}
+        coursesOptions={coursesOptions}
+        subjectsOptions={subjectOptions}
+        disable={isPending}
+      />
 
       {/* Invitation Dialog */}
       <Dialog

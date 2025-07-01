@@ -1,19 +1,20 @@
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useCurrentUser } from "../../api/use-current-user";
 import { Clock } from "lucide-react";
-import { useCurrentUniversity } from "../../api/use-current-university";
 import { Loading } from "@/components/Loading";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { RoleDashboard } from "../../components/role-dashboard";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useCurrentUser } from "@/app/(home)/api/use-current-user";
+import { useCurrentUniversity } from "@/app/(home)/api/use-current-university";
+import { RoleDashboard } from "@/app/(home)/components/role-dashboard";
 
 export default function DashboardPage() {
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const { data: university, isLoading: universityLoading } =
     useCurrentUniversity();
+  console.log("university", university);
   if (!university && !universityLoading) {
     return (
       <div className="flex h-screen items-center justify-center flex-col gap-3">

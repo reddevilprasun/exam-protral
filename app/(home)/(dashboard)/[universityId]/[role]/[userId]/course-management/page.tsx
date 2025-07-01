@@ -67,22 +67,22 @@ export default function DepartmentManagementPage() {
           <TableBody>
             {courses.length !== 0 ? (
               courses.map((course) => (
-                <TableRow key={course.id}>
+                <TableRow key={course?.id}>
                   <TableCell className="font-medium">
-                    {course.name}
+                    {course?.name}
                   </TableCell>
-                  <TableCell>{course.code}</TableCell>
-                  <TableCell>{course.department.name}</TableCell>
+                  <TableCell>{course?.code}</TableCell>
+                  <TableCell>{course?.department.name}</TableCell>
                   <TableCell className="truncate">
-                    {course.description}
+                    {course?.description}
                   </TableCell>
-                  <TableCell>{formatDate(course.createdAt)}</TableCell>
+                  <TableCell>{course?.createdAt ? formatDate(course.createdAt) : "N/A"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => editCourse.onOpen(course.id)}
+                        onClick={() => course?.id && editCourse.onOpen(course.id)}
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         Edit

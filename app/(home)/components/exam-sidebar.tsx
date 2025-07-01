@@ -36,45 +36,50 @@ export function ExamSidebar() {
   const { data: user, isLoading } = useCurrentUser();
   const role = user?.universityRole;
 
+  const basePath = user
+  ? `/${user.universityId}/${user.universityRole}/${user.id}`
+  : "";
+
   const getNavItems = () => {
     switch (role) {
       case "supervisor":
         return [
-          { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-          { name: "Users", icon: Users, href: "/user-management" },
-          { name: "Courses", icon: BookText, href: "/course-management" },
-          { name: "Departments", icon: Building, href: "/department-management" },
-          { name: "Subjects", icon: BookText, href: "/subject-management" },
-          { name: "Batches", icon: GraduationCap, href: "/batch-management" },
-          { name: "Exams", icon: BookOpen, href: "/exam-management" },
-          { name: "Reports", icon: BarChart3, href: "/reports" },
-          { name: "Settings", icon: Settings, href: "/university-management" },
+          { name: "Dashboard", icon: LayoutDashboard, href: `${basePath}/dashboard` },
+          { name: "Users", icon: Users, href: `${basePath}/user-management` },
+          { name: "Courses", icon: BookText, href: `${basePath}/course-management` },
+          { name: "Departments", icon: Building, href: `${basePath}/department-management` },
+          { name: "Subjects", icon: BookText, href: `${basePath}/subject-management` },
+          { name: "Batches", icon: GraduationCap, href: `${basePath}/batch-management` },
+          { name: "Exams", icon: BookOpen, href: `${basePath}/exam-management` },
+          { name: "Reports", icon: BarChart3, href: `${basePath}/reports` },
+          { name: "Settings", icon: Settings, href: `${basePath}/settings` },
         ];
       case "teacher":
         return [
-          { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+          { name: "Dashboard", icon: LayoutDashboard, href: `${basePath}/dashboard` },
           {
             name: "Students",
             icon: GraduationCap,
-            href: "/student-management",
+            href: `${basePath}/student-management`,
           },
           {
             name: "Question Bank",
             icon: BookOpen,
-            href: "/teacher/question-bank",
+            href: `${basePath}/question-bank`,
           },
-          { name: "Create Exam", icon: Plus, href: "/teacher/create-exam" },
-          { name: "My Exams", icon: FileText, href: "/teacher/exams" },
-          { name: "Results", icon: BarChart3, href: "/teacher/results" },
-          { name: "Calendar", icon: Calendar, href: "/teacher/calendar" },
+          { name: "Create Exam", icon: Plus, href: `${basePath}/create-exam` },
+          { name: "My Exams", icon: FileText, href: `${basePath}/my-exams` },
+          { name: "Results", icon: BarChart3, href: `${basePath}/results` },
+          { name: "Calendar", icon: Calendar, href: `${basePath}/calendar` },
         ];
       case "student":
         return [
-          { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-          { name: "My Exams", icon: BookOpen, href: "/student/exams" },
-          { name: "Take Exam", icon: FileText, href: "/student/exams" },
-          { name: "Results", icon: BarChart3, href: "/student/results" },
-          { name: "Calendar", icon: Calendar, href: "/student/calendar" },
+          { name: "Dashboard", icon: LayoutDashboard, href: `${basePath}/dashboard` },
+          { name: "My Exams", icon: BookOpen, href: `${basePath}/my-exams` },
+          { name: "Take Exam", icon: FileText, href: `${basePath}/take-exam` },
+          { name: "Results", icon: BarChart3, href: `${basePath}/results` },
+          { name: "Calendar", icon: Calendar, href: `${basePath}/calendar` },
+          { name: "Settings", icon: Settings, href: `${basePath}/settings` },
         ];
       // case "exam_controller":
       //   return [

@@ -46,7 +46,7 @@ export default function NavBar() {
           {isLoggedIn ? (
             <>
               <Badge>
-                {user.data?.universityRole?.toWellFormed()}
+                {user.data?.universityRole?.toUpperCase()}
               </Badge>
               <Button variant="ghost" size="icon" onClick={() => signOut()}>
                 <LogOut className="h-5 w-5" />

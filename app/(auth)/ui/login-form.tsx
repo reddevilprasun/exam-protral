@@ -66,7 +66,7 @@ export function LoginForm() {
         flow: "signIn",
       });
       toast.success("Login successful!");
-      router.push("/dashboard");
+      router.push("/post-login");
     } catch (e) {
       setError("Invalid credentials. Please try again.");
       console.error("Error signing in:", e);

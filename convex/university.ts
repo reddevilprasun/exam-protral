@@ -65,18 +65,22 @@ export const getUniversityInfo = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user) {
+      console.error("User not found in getUniversityInfo");
       return null;
     }
     if (!user.universityId) {
+      console.error("User does not have a university in getUniversityInfo");
       return null;
     }
 
     const universityStatus = await getUserUniversityStatus(ctx);
     if (!universityStatus) {
+      console.error("University status not found in getUniversityInfo");
       return null;
     }
     const university = await ctx.db.get(user.universityId);
     if (!university) {
+      console.error("University not found in getUniversityInfo");
       return null;
     }
     return {
@@ -216,16 +220,6 @@ export const getDepartment = query({
       return null;
     }
     const universityId = university._id;
-    // Check if the user is a university supervisor
-    const supervisor = await checkUserRole(
-      ctx,
-      user._id,
-      "supervisor",
-      universityId
-    );
-    if (!supervisor) {
-      return null;
-    }
     const departments = await ctx.db
       .query("department")
       .withIndex("uniq_department", (q) => q.eq("universityId", universityId))
@@ -251,17 +245,6 @@ export const getDepartmentById = query({
     }
     const university = await ctx.db.get(user.universityId);
     if (!university) {
-      return null;
-    }
-    const universityId = university._id;
-    // Check if the user is a university supervisor
-    const supervisor = await checkUserRole(
-      ctx,
-      user._id,
-      "supervisor",
-      universityId
-    );
-    if (!supervisor) {
       return null;
     }
     const department = await ctx.db.get(args.id);
@@ -422,16 +405,6 @@ export const getCourse = query({
       return null;
     }
     const universityId = university._id;
-    // Check if the user is a university supervisor
-    const supervisor = await checkUserRole(
-      ctx,
-      user._id,
-      "supervisor",
-      universityId
-    );
-    if (!supervisor) {
-      return null;
-    }
     const courses = await ctx.db
       .query("courses")
       .withIndex("uniq_course_code", (q) => q.eq("universityId", universityId))
@@ -478,17 +451,6 @@ export const getCourseById = query({
     }
     const university = await ctx.db.get(user.universityId);
     if (!university) {
-      return null;
-    }
-    const universityId = university._id;
-    // Check if the user is a university supervisor
-    const supervisor = await checkUserRole(
-      ctx,
-      user._id,
-      "supervisor",
-      universityId
-    );
-    if (!supervisor) {
       return null;
     }
 
@@ -629,16 +591,6 @@ export const getAllBatches = query({
       return null;
     }
     const universityId = university._id;
-    // Check if the user is a university supervisor
-    const supervisor = await checkUserRole(
-      ctx,
-      user._id,
-      "supervisor",
-      universityId
-    );
-    if (!supervisor) {
-      return null;
-    }
 
     const courses = await ctx.db
       .query("courses")
@@ -698,17 +650,6 @@ export const getBatchById = query({
     }
     const university = await ctx.db.get(user.universityId);
     if (!university) {
-      return null;
-    }
-    const universityId = university._id;
-    // Check if the user is a university supervisor
-    const supervisor = await checkUserRole(
-      ctx,
-      user._id,
-      "supervisor",
-      universityId
-    );
-    if (!supervisor) {
       return null;
     }
 
@@ -892,14 +833,6 @@ export const getAllSubject = query({
     const university = await ctx.db.get(user.universityId);
     if (!university) return null;
 
-    const isSupervisor = await checkUserRole(
-      ctx,
-      user._id,
-      "supervisor",
-      university._id
-    );
-    if (!isSupervisor) return null;
-
     const [courses, departments] = await Promise.all([
       ctx.db
         .query("courses")
@@ -980,17 +913,7 @@ export const getSubjectById = query({
     if (!university) {
       return null;
     }
-    const universityId = university._id;
-    // Check if the user is a university supervisor
-    const supervisor = await checkUserRole(
-      ctx,
-      user._id,
-      "supervisor",
-      universityId
-    );
-    if (!supervisor) {
-      return null;
-    }
+
     const subject = await ctx.db.get(args.id);
     if (!subject) {
       return null;
@@ -1025,3 +948,4 @@ export const getSubjectById = query({
     };
   },
 });
+

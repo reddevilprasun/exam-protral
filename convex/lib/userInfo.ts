@@ -46,7 +46,7 @@ export async function getUserUniversityStatus(ctx: QueryCtx) {
   }
   return await ctx.db
     .query("universityCreateRequest")
-    .withIndex("uniq_user_university_create_request", (q) => user.universityId ? q.eq("userId", user._id).eq("universityId", user.universityId) : q)
+    .withIndex("uniq_university_create_request", (q) => user.universityId ? q.eq("universityId", user.universityId) : q)
     .unique();
 }
 

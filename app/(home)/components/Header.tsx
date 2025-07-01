@@ -1,57 +1,63 @@
 "use client";
+
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 
 export function Header() {
   const pathname = usePathname();
-  const getInfoOfHeaderItem = (pathname: string) => {
-    switch (pathname) {
-      case "/department-management":
-        return {
-          title: "Department Management",
-          description: "Manage departments for your university",
-        };
-      case "/course-management":
-        return {
-          title: "Course Management",
-          description: "Manage courses for your university",
-        };
-      case "/batch-management":
-        return {
-          title: "Batch Management",
-          description: "Manage batches for your university",
-        };
-      case "/subject-management":
-        return {
-          title: "Subject Management",
-          description: "Manage subjects for your university",
-        };
-      case "/user-management":
-        return {
-          title: "User Management",
-          description: "Manage users and roles for your university"
-        }
-      default:
-        return {
-          title: "",
-          description: "",
-        };
+
+  const getInfoOfHeaderItem = (path: string) => {
+    if (path.includes("department-management")) {
+      return {
+        title: "Department Management",
+        description: "Manage departments for your university",
+      };
     }
+    if (path.includes("course-management")) {
+      return {
+        title: "Course Management",
+        description: "Manage courses for your university",
+      };
+    }
+    if (path.includes("batch-management")) {
+      return {
+        title: "Batch Management",
+        description: "Manage batches for your university",
+      };
+    }
+    if (path.includes("subject-management")) {
+      return {
+        title: "Subject Management",
+        description: "Manage subjects for your university",
+      };
+    }
+    if (path.includes("user-management")) {
+      return {
+        title: "User Management",
+        description: "Manage users and roles for your university",
+      };
+    }
+    if (path.includes("student-management")) {
+      return {
+        title: "Student Management",
+        description: "Manage students for your university",
+      };
+    }
+
+    return { title: "", description: "" };
   };
-  if(getInfoOfHeaderItem(pathname).title === "") {
-    return null;
-  }
+
+  const { title, description } = getInfoOfHeaderItem(pathname);
+
+  if (!title) return null;
+
   return (
     <div className="mb-6 mt-4 flex w-full items-start justify-between flex-col gap-2">
       <div className="flex items-center gap-2">
         <SidebarTrigger size="lg" />
-        <h1 className="text-3xl font-bold">
-          {getInfoOfHeaderItem(pathname).title}
-        </h1>
+        <h1 className="text-3xl font-bold">{title}</h1>
       </div>
-      <p className="text-muted-foreground">
-        {getInfoOfHeaderItem(pathname).description}
-      </p>
+      <p className="text-muted-foreground">{description}</p>
     </div>
   );
 }

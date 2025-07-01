@@ -45,7 +45,8 @@ export default defineSchema({
       v.literal("rejected")
     ),
   })
-  .index("uniq_user_university_create_request", ["userId", "universityId"]),
+  .index("uniq_user_university_create_request", ["userId", "universityId"])
+  .index("uniq_university_create_request", ["universityId"]),
   // University User Roles (RBAC)
   universityRoles: defineTable({
     userId: v.id("users"),
@@ -60,7 +61,7 @@ export default defineSchema({
   }).index("uniq_user_university_role", ["userId", "universityId", "role"]),
 
   userCreateRequest: defineTable({
-    name: v.string(),
+    userId: v.id("users"),
     email: v.string(),
     role : v.union(
       v.literal("student"),
@@ -69,16 +70,18 @@ export default defineSchema({
       v.literal("supervisor"),
       v.literal("examcontroller"),
     ),
-    department: v.optional(v.id("courses")),
+    departmentId: v.optional(v.id("department")),
+    courseId: v.optional(v.id("courses")),
     subjectId: v.optional(v.id("subjects")),
     universityId: v.id("universities"),
-    batchId: v.id("batches"),
+    batchId: v.optional(v.id("batches")),
+    secretToken: v.string(),
     status: v.union(
       v.literal("active"),
       v.literal("pending")
     )
   })
-  .index("uniq_user_create_request", ["email", "universityId"]),
+  .index("uniq_user_create_request", ["universityId", "email"]),
 
   // Academic Structure
   department: defineTable({
@@ -125,19 +128,24 @@ export default defineSchema({
   // Student Enrollment
   studentEnrollments: defineTable({
     studentId: v.id("users"),
+    academicId: v.number(),
     batchId: v.id("batches"),
+    courseId: v.id("courses"),
+    departmentId: v.id("department"),
+    universityId: v.id("universities"),
     enrollmentDate: v.float64(),
   })
-  .index("uniq_student_batch", ["batchId", "studentId"]),
+  .index("uniq_student_batch", ["batchId", "studentId"])
+  .index("uniq_student_university", ["universityId", "studentId"]),
   //Teaching Assignments
   teachingAssignments: defineTable({
     teacherId: v.id("users"),
-    batchId: v.id("batches"),
+    courseId: v.id("courses"),
     subjectId: v.id("subjects"),
-    departmentId: v.id("courses"),
+    departmentId: v.id("department"),
     assignmentDate: v.float64(),
   })
-  .index("uniq_teacher_batch_subject", ["teacherId", "batchId", "subjectId"]),
+  .index("uniq_teacher_batch_subject", ["teacherId", "subjectId"]),
 
   // Question Bank
   questions: defineTable({
@@ -147,20 +155,36 @@ export default defineSchema({
     questionType: v.union(
       v.literal("mcq"),
       v.literal("saq"),
+      v.literal("true_false"),
+      v.literal("fill_in_the_blank"),
     ),
-    options: v.optional(v.array(v.string())),
-    correctAnswer: v.optional(v.string()),
-    explanation: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+    ),
+    // For MCQs
+    options: v.optional(
+      v.array(
+        v.object({
+          text: v.string(),
+          isCorrect: v.boolean(),
+        })
+      )
+    ),
+    // for True/False
+    correctTrueFalseAnswer: v.optional(v.boolean()),
+    // For descriptive questions or fill-in-the-blank
+    answerText: v.optional(v.string()),
     marks: v.float64(),
     difficultyLevel: v.union(
-      v.literal("Easy"),
+      v.literal("easy"),
       v.literal("Medium"),
       v.literal("Hard")
     ),
     createdAt: v.float64(),
     updatedAt: v.float64(),
-  })
-  .index("uniq_question", ["subjectId", "questionText"]),
+  }),
 
   // Exam Management
   exams: defineTable({
