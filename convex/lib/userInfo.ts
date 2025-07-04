@@ -18,7 +18,7 @@ export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
 export async function getUserUniversityRole(ctx: QueryCtx | MutationCtx, userId: Id<"users">, universityId: Id<"universities">) {
   return await ctx.db
     .query("universityRoles")
-    .withIndex("uniq_user_university_role", (q) => q.eq("userId", userId).eq("universityId", universityId))
+    .withIndex("uniq_user_university_role_2", (q) => q.eq("userId", userId).eq("universityId", universityId))
     .unique();
 }
 
@@ -64,7 +64,7 @@ export async function checkAdminUser(ctx: QueryCtx, userId: Id<"users">) {
 export async function checkUserRole(ctx: QueryCtx, userId: Id<"users">, role: string, universityId: Id<"universities">) {
   const user = await ctx.db
     .query("universityRoles")
-    .withIndex("uniq_user_university_role", (q) => q.eq("userId", userId).eq("universityId",universityId))
+    .withIndex("uniq_user_university_role_2", (q) => q.eq("userId", userId).eq("universityId",universityId))
     .unique();
   if (!user) {
     return false;

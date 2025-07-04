@@ -58,7 +58,9 @@ export default defineSchema({
       v.literal("supervisor"),
       v.literal("examcontroller"),
     )
-  }).index("uniq_user_university_role", ["userId", "universityId", "role"]),
+  })
+  .index("uniq_user_university_role", ["universityId", "role"])
+  .index("uniq_user_university_role_2", ["userId", "universityId"]),
 
   userCreateRequest: defineTable({
     userId: v.id("users"),
@@ -145,7 +147,8 @@ export default defineSchema({
     departmentId: v.id("department"),
     assignmentDate: v.float64(),
   })
-  .index("uniq_teacher_batch_subject", ["teacherId", "subjectId"]),
+  .index("uniq_teacher_batch_subject", ["teacherId", "subjectId"])
+  .index("uniq_teacher_university", ["teacherId", "departmentId"]),
 
   // Question Bank
   questions: defineTable({
@@ -185,16 +188,38 @@ export default defineSchema({
     createdAt: v.float64(),
     updatedAt: v.float64(),
   })
-  .index("uniq_question_subject", ["subjectId", "questionText"])
+  .index("uniq_question_subject_teacher", ["subjectId", "createdBy"])
   .index("uniq_question_type", ["questionType", "subjectId"])
   .index("uniq_teacher_question", ["createdBy"]),
+  questionGroups: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    subjectId: v.id("subjects"),
+    createdBy: v.id("users"),
+    targetDifficulty: v.union(
+      v.literal("easy"),
+      v.literal("medium"),
+      v.literal("hard")
+    ),
+    tags: v.optional(v.array(v.string())),
+    intendedUse: v.string(), // e.g., "exam", "quiz", "practice"
+    selectedQuestions: v.optional(
+      v.array(v.id("questions"))
+    ),
+    createdAt: v.float64(),
+    updatedAt: v.float64(),
+  })
+  .index("uniq_question_group", ["subjectId", "title"])
+  .index("uniq_teacher_question_group", ["createdBy", "subjectId", "title"]),
 
   // Exam Management
   exams: defineTable({
     subjectId: v.id("subjects"),
-    batchId: v.id("batches"),
+    batchId: v.array(v.id("batches")),
     title: v.string(),
     description: v.string(),
+    questions: v.array(v.id("questions")),
+    questionGroups: v.optional(v.array(v.id("questionGroups"))),
     examType: v.union(
       v.literal("midterm"),
       v.literal("final"),
@@ -207,9 +232,14 @@ export default defineSchema({
     duration: v.float64(), // in minutes
     scheduleStart: v.float64(),
     scheduleEnd: v.float64(),
+    startTime: v.string(), // Optional start time for the exam
+    endTime: v.string(), // Optional end time for the exam
     createdBy: v.id("users"),
+    allowedAttempts: v.float64(), // Optional field for allowed attempts
+    invigilator: v.optional(v.id("users")),
     createdAt: v.float64(),
     updatedAt: v.float64(),
+    instructions: v.optional(v.string()), // Optional exam instructions
     status: v.union(
       v.literal("scheduled"),
       v.literal("ongoing"),
@@ -219,17 +249,9 @@ export default defineSchema({
     maxMarks: v.float64(),
     passingMarks: v.float64(),
   })
-  .index("uniq_exam", ["subjectId", "batchId", "title"]),
-  examQuestions: defineTable({
-    examId: v.id("exams"),
-    questionId: v.id("questions"),
-    marks: v.float64(),
-    questionOrder: v.float64(),
-    createdAt: v.float64(),
-    updatedAt: v.float64(),
-  })
-  .index("uniq_exam_question", ["examId", "questionId"]),
-
+  .index("uniq_exam", ["subjectId", "batchId", "title"])
+  .index("uniq_exam_teacher", ["createdBy", "subjectId", "title"])
+  .index("uniq_exam_teacher_and_invigilator", ["invigilator"]),
   // Exam Attempts & Results
   examAttempts: defineTable({
     studentId: v.id("users"),

@@ -68,7 +68,7 @@ export function ExamSidebar() {
             href: `${basePath}/question-bank`,
           },
           { name: "Create Exam", icon: Plus, href: `${basePath}/create-exam` },
-          { name: "My Exams", icon: FileText, href: `${basePath}/my-exams` },
+          { name: "Exams Management", icon: FileText, href: `${basePath}/exam-management` },
           { name: "Results", icon: BarChart3, href: `${basePath}/results` },
           { name: "Calendar", icon: Calendar, href: `${basePath}/calendar` },
         ];

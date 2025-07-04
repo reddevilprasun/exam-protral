@@ -15,7 +15,9 @@ import type {
 } from "convex/server";
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
+import type * as crons from "../crons.js";
 import type * as customProfile from "../customProfile.js";
+import type * as exam from "../exam.js";
 import type * as http from "../http.js";
 import type * as lib_batchInfo from "../lib/batchInfo.js";
 import type * as lib_userInfo from "../lib/userInfo.js";
@@ -34,7 +36,9 @@ import type * as user from "../user.js";
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
+  crons: typeof crons;
   customProfile: typeof customProfile;
+  exam: typeof exam;
   http: typeof http;
   "lib/batchInfo": typeof lib_batchInfo;
   "lib/userInfo": typeof lib_userInfo;

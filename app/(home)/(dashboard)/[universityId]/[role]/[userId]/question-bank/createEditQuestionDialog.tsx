@@ -114,8 +114,6 @@ export default function CreateEditQuestionDialog({
     } else {
       onSubmit?.(submitData);
     }
-    form.reset();
-    onOpenChange(false);
   };
 
   const type = form.watch("type");

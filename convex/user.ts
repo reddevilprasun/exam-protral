@@ -345,6 +345,134 @@ export const teacherCreateStudent = mutation({
   },
 });
 
+export const getCurrentTeacher = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      return null;
+    }
+    if (!user.universityId) {
+      return null;
+    }
+    const university = await ctx.db.get(user.universityId);
+    if (!university) {
+      return null;
+    }
+    const teacherInfo = await ctx.db.get(user._id);
+    
+    if (!teacherInfo) {
+      throw new ConvexError("Teacher does not exist");
+    }
+    const teachingAssignment = await ctx.db.query("teachingAssignments").withIndex("uniq_teacher_university", (q) => q.eq("teacherId", user._id)).unique();
+    if (!teachingAssignment) {
+      throw new ConvexError("Teacher does not have a teaching assignment");
+    }
+    const department = await ctx.db.get(teachingAssignment.departmentId);
+    if (!department || department.universityId !== university._id) {
+      throw new ConvexError("Department does not belong to the university");
+    }
+    const subject = await ctx.db.get(teachingAssignment.subjectId);
+    if (!subject || subject.courseId !== teachingAssignment.courseId) {
+      throw new ConvexError("Subject does not belong to the course");
+    }
+    const course = await ctx.db.get(teachingAssignment.courseId);
+    if (!course || course.universityId !== university._id) {
+      throw new ConvexError("Course does not belong to the university");
+    }
+
+    return {
+      id: user._id,
+      firstName: teacherInfo.firstName,
+      lastName: teacherInfo.lastName,
+      email: teacherInfo.email,
+      createdAt: teacherInfo.createdAt,
+      lastLogin: teacherInfo.lastLogin,
+      departmentName: department.name,
+      courseName: course.name,
+      subjectName: subject.name,
+    };
+  },
+});
+
+export const getAllTeachersOfUniversity = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      return null;
+    }
+    if (!user.universityId) {
+      return null;
+    }
+    const university = await ctx.db.get(user.universityId);
+    if (!university) {
+      return null;
+    }
+    const universityId = university._id;
+    // Check if the user is a university supervisor or teacher
+    const supervisor = await checkUserRole(
+      ctx,
+      user._id,
+      "supervisor",
+      universityId
+    );
+    const teacher = await checkUserRole(
+      ctx,
+      user._id,
+      "teacher",
+      universityId
+    );
+
+    // If the user is neither a supervisor nor a teacher, return null
+    if (!supervisor && !teacher) {
+      return null;
+    }
+
+    const teachers = await ctx.db
+      .query("universityRoles")
+      .withIndex("uniq_user_university_role", (q) =>
+        q.eq("universityId", universityId).eq("role", "teacher")
+      )
+      .collect();
+
+    if (!teachers) {
+      return null;
+    }
+
+    const teachersWithInfo = await Promise.all(
+      teachers.map(async (teacher) => {
+        const teacherInfo = await ctx.db.get(teacher.userId);
+        const teacherEnrollment = await ctx.db
+          .query("teachingAssignments")
+          .withIndex("uniq_teacher_university", (q) =>
+            q.eq("teacherId", teacher.userId)
+          )
+          .unique();
+        if (!teacherEnrollment) {
+          throw new ConvexError("Teacher does not have a teaching assignment");
+        }
+        const department = await ctx.db.get(teacherEnrollment.departmentId);
+        if (!department || department.universityId !== universityId) {
+          throw new ConvexError("Department does not belong to the university");
+        }
+        if (!teacherInfo) {
+          throw new ConvexError("Teacher does not exist");
+        }
+        return {
+          id: teacher.userId,
+          firstName: teacherInfo.firstName,
+          lastName: teacherInfo.lastName,
+          email: teacherInfo.email,
+          departmentName: department.name,
+          createdAt: teacherInfo.createdAt,
+          lastLogin: teacherInfo.lastLogin,
+        };
+      })
+    );
+    
+    return teachersWithInfo;
+  },
+});
+
 export const getAllStudents = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
@@ -583,3 +711,5 @@ export const updateStudent = mutation({
     return args.studentId;
   },
 });
+
+
