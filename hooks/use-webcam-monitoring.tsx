@@ -28,9 +28,9 @@ interface Options {
 }
 
 const ALERT_COOLDOWN = 300000 // 5 minutes
-const PHONE_CONFIDENCE = 0.65 // Lowered confidence threshold
-const LOOKING_AWAY_THRESHOLD = 0.5 // More conservative threshold
-const FACE_AREA_THRESHOLD = 0.08 // Minimum face size to consider
+const PHONE_CONFIDENCE = 0.55 // Lowered confidence threshold
+const CONSECUTIVE_NO_FACE_THRESHOLD = 10 // 1 second at 10fps
+const LOOKING_AWAY_THRESHOLD = 20 // Degrees threshold
 
 /* ------------------------------------------------------------------ */
 /* Hook Implementation                                                 */
@@ -53,7 +53,9 @@ export function useWebcamMonitoring({
   const faceModelRef = useRef<blazeface.BlazeFaceModel | null>(null)
   const objectModelRef = useRef<cocossd.ObjectDetection | null>(null)
   const lastAlertTimeRef = useRef<Record<string, number>>({})
+  const consecutiveNoFaceRef = useRef(0)
   const consecutiveLookingAwayRef = useRef(0)
+  const detectionLogRef = useRef<string[]>([])
   
   const [isWebcamActive, setIsWebcamActive] = useState(false)
   const [webcamError, setWebcamError] = useState<string | null>(null)
@@ -84,6 +86,7 @@ export function useWebcamMonitoring({
       faceModelRef.current = faceModel
       objectModelRef.current = objectModel
       setModelsLoaded(true)
+      console.log("AI models loaded successfully")
     } catch (err) {
       console.error('Model loading failed:', err)
       setWebcamError("AI models failed to load. Monitoring limited.")
@@ -97,7 +100,6 @@ export function useWebcamMonitoring({
   /* ------------------------------------------------------------------ */
   const getCameraStream = useCallback(async () => {
     try {
-      // Prioritize high resolution
       return await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280 },
@@ -107,7 +109,6 @@ export function useWebcamMonitoring({
         audio: false
       })
     } catch (err) {
-      // Fallback to basic constraints
       return navigator.mediaDevices.getUserMedia({ 
         video: true,
         audio: false 
@@ -176,11 +177,81 @@ export function useWebcamMonitoring({
     }
   }, [])
 
+  // Calculate head pose using facial landmarks
+  const calculateHeadPose = useCallback((face: blazeface.NormalizedFace) => {
+    if (!face.landmarks || (Array.isArray(face.landmarks) && face.landmarks.length < 3)) return { yaw: 0, pitch: 0 };
+    
+    const landmarks = face.landmarks;
+    const leftEye = Array.isArray(landmarks) ? landmarks[0] : landmarks.arraySync()[0];
+    const rightEye = Array.isArray(landmarks) ? landmarks[1] : landmarks.arraySync()[1];
+    const nose = Array.isArray(landmarks) 
+      ? landmarks[2] 
+      : landmarks.arraySync()[2];
+    
+    // Calculate eye midpoint
+    const eyeMidpoint = [
+      (leftEye[0] + rightEye[0]) / 2,
+      (leftEye[1] + rightEye[1]) / 2
+    ];
+    
+    // Calculate vector from eye midpoint to nose
+    const vector = [
+      nose[0] - eyeMidpoint[0],
+      nose[1] - eyeMidpoint[1]
+    ];
+    
+    // Calculate distance between eyes for normalization
+    const eyeDistance = Math.sqrt(
+      Math.pow(rightEye[0] - leftEye[0], 2) +
+      Math.pow(rightEye[1] - leftEye[1], 2)
+    );
+    
+    if (eyeDistance < 0.01) return { yaw: 0, pitch: 0 }; // Prevent division by zero
+    
+    // Normalize vector
+    const normalizedVector = [
+      vector[0] / eyeDistance,
+      vector[1] / eyeDistance
+    ];
+    
+    // Convert to angles (simplified approximation)
+    const yaw = Math.atan(normalizedVector[0]) * (180 / Math.PI);
+    const pitch = Math.atan(normalizedVector[1]) * (180 / Math.PI);
+    
+    return { yaw, pitch };
+  }, []);
+
+  // New: Enhanced looking away detection using face position
+  const isLookingAwayByPosition = useCallback((face: blazeface.NormalizedFace, canvas: HTMLCanvasElement) => {
+    if (!face.topLeft || !face.bottomRight) return false;
+    
+    const topLeft = face.topLeft;
+    const [topLeftX, topLeftY] = Array.isArray(topLeft) ? topLeft : topLeft.arraySync();
+    const bottomRight = face.bottomRight;
+    const [bottomRightX, bottomRightY] = Array.isArray(bottomRight) ? bottomRight : bottomRight.arraySync();
+    
+    // Calculate face center
+    const faceCenterX = (topLeftX + bottomRightX) / 2;
+    const faceCenterY = (topLeftY + bottomRightY) / 2;
+    
+    // Calculate frame center
+    const frameCenterX = canvas.width / 2;
+    const frameCenterY = canvas.height / 2;
+    
+    // Calculate offset as percentage of frame size
+    const xOffset = Math.abs(faceCenterX - frameCenterX) / frameCenterX;
+    const yOffset = Math.abs(faceCenterY - frameCenterY) / frameCenterY;
+    
+    return xOffset > 0.35 || yOffset > 0.35;
+  }, []);
+
   const analyzeFrame = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || isInvigilatorView) return
     
     const video = videoRef.current
     const canvas = canvasRef.current
+    if (!canvas) return;
+    
     const ctx = canvas.getContext('2d')
     if (!ctx || video.videoWidth === 0 || video.videoHeight === 0) return
     
@@ -216,15 +287,27 @@ export function useWebcamMonitoring({
       noFaceDetections: prev.noFaceDetections + (faceCount === 0 ? 1 : 0)
     }))
     
-    // Handle face-based alerts
+    /* ------------------- No Face Detection ------------------- */
     if (faceCount === 0) {
-      triggerAlert(
-        "no_face", 
-        "No face detected in webcam feed", 
-        "high"
-      )
-    } 
-    else if (faceCount > 1) {
+      consecutiveNoFaceRef.current += 1;
+      
+      // Trigger alert after consecutive missing frames
+      if (consecutiveNoFaceRef.current >= CONSECUTIVE_NO_FACE_THRESHOLD) {
+        const lastAlert = lastAlertTimeRef.current["no_face"] || 0
+        if (Date.now() - lastAlert > 30000) {
+          triggerAlert(
+            "no_face", 
+            "No face detected in webcam feed", 
+            "high"
+          )
+        }
+      }
+    } else {
+      consecutiveNoFaceRef.current = 0;
+    }
+    
+    /* ------------------- Multiple Person Detection ------------------- */
+    if (faceCount > 1) {
       setDetectionStats(prev => ({
         ...prev,
         multiplePersonDetections: prev.multiplePersonDetections + 1
@@ -237,85 +320,99 @@ export function useWebcamMonitoring({
       )
     }
     
-    /* ------------------- Phone Detection ------------------- */
-    // Run every 4th frame for performance
-    if (detectionStats.totalFramesAnalyzed % 4 === 0) {
-      const objects = await detectObjects()
-      
-      // Check for phones AND other electronic devices
-      const electronicDeviceDetected = objects.some(obj => 
-        (obj.class === 'cell phone' || 
-         obj.class === 'laptop' || 
-         obj.class === 'remote') && 
-        obj.score > PHONE_CONFIDENCE
-      )
-      
-      if (electronicDeviceDetected) {
-        setDetectionStats(prev => ({
-          ...prev,
-          phoneDetections: prev.phoneDetections + 1
-        }))
+    /* ------------------- Phone Detection (Enhanced) ------------------- */
+    if (detectionStats.totalFramesAnalyzed % 3 === 0) {
+      try {
+        const objects = await detectObjects()
         
-        triggerAlert(
-          "phone_detected", 
-          "Electronic device detected in webcam feed", 
-          "high"
-        )
+        // Log detected objects for debugging
+        if (objects.length > 0) {
+          const logEntry = `Frame ${detectionStats.totalFramesAnalyzed}: ${objects.map(o => 
+            `${o.class} (${Math.round(o.score * 100)}%)`
+          ).join(', ')}`;
+          
+          detectionLogRef.current.push(logEntry);
+          if (detectionLogRef.current.length > 20) detectionLogRef.current.shift();
+          
+          console.log(logEntry);
+        }
+        
+        // Check for electronic devices
+        const deviceDetected = objects.some(obj => {
+          const normalizedClass = obj.class.toLowerCase();
+          
+          return (
+            normalizedClass.includes('phone') ||
+            normalizedClass.includes('cell') ||
+            normalizedClass.includes('mobile') ||
+            normalizedClass.includes('electronic') ||
+            normalizedClass.includes('device') ||
+            normalizedClass.includes('laptop') ||
+            normalizedClass.includes('tablet')
+          ) && obj.score > PHONE_CONFIDENCE;
+        });
+        
+        if (deviceDetected) {
+          setDetectionStats(prev => ({
+            ...prev,
+            phoneDetections: prev.phoneDetections + 1
+          }))
+          
+          triggerAlert(
+            "phone_detected", 
+            "Electronic device detected in webcam feed", 
+            "high"
+          )
+        }
+      } catch (err) {
+        console.error('Object detection failed:', err);
       }
     }
     
-    /* ------------------- Looking Away Detection ------------------- */
+    /* ------------------- Looking Away Detection (Dual Method) ------------------- */
     if (faceCount === 1) {
       const face = faces[0]
+      let isLookingAway = false;
+      let method = 'none';
       
-      // Check if face has required properties
-      if (!Array.isArray(face.topLeft) || !Array.isArray(face.bottomRight)) {
-        animationRef.current = requestAnimationFrame(analyzeFrame)
-        return
+      // Method 1: Head pose estimation (if landmarks available)
+      if (Array.isArray(face.landmarks) && face.landmarks.length >= 3) {
+        try {
+          const { yaw, pitch } = calculateHeadPose(face);
+          console.log(`Head pose - Yaw: ${yaw.toFixed(1)}°, Pitch: ${pitch.toFixed(1)}°`);
+          
+          isLookingAway = Math.abs(yaw) > LOOKING_AWAY_THRESHOLD || Math.abs(pitch) > LOOKING_AWAY_THRESHOLD;
+          method = 'pose';
+        } catch (err) {
+          console.error('Head pose calculation error:', err);
+        }
       }
       
-      const [topLeftX, topLeftY] = face.topLeft
-      const [bottomRightX, bottomRightY] = face.bottomRight
-      
-      // Calculate face area percentage
-      const faceWidth = bottomRightX - topLeftX
-      const faceHeight = bottomRightY - topLeftY
-      const faceArea = (faceWidth * faceHeight) / (canvas.width * canvas.height)
-      
-      // Skip if face is too small
-      if (faceArea < FACE_AREA_THRESHOLD) {
-        animationRef.current = requestAnimationFrame(analyzeFrame)
-        return
+      // Method 2: Face position detection (fallback)
+      if (!isLookingAway) {
+        isLookingAway = isLookingAwayByPosition(face, canvas);
+        method = 'position';
       }
       
-      const faceCenterX = (topLeftX + bottomRightX) / 2
-      const faceCenterY = (topLeftY + bottomRightY) / 2
-      const frameCenterX = canvas.width / 2
-      const frameCenterY = canvas.height / 2
-      
-      const xOffset = Math.abs(faceCenterX - frameCenterX) / frameCenterX
-      const yOffset = Math.abs(faceCenterY - frameCenterY) / frameCenterY
-      
-      // Require consecutive detections to reduce false positives
-      if (xOffset > LOOKING_AWAY_THRESHOLD || yOffset > LOOKING_AWAY_THRESHOLD) {
-        consecutiveLookingAwayRef.current += 1
+      // Apply detection logic
+      if (isLookingAway) {
+        console.log(`Looking away detected by ${method} method`);
+        consecutiveLookingAwayRef.current += 1;
         
-        // Only trigger after 3 consecutive detections
         if (consecutiveLookingAwayRef.current >= 3) {
           setDetectionStats(prev => ({
             ...prev,
             lookingAwayCount: prev.lookingAwayCount + 1
-          }))
+          }));
           
           triggerAlert(
             "looking_away", 
             "Student looking away from screen", 
             "medium"
-          )
+          );
         }
       } else {
-        // Reset counter if not looking away
-        consecutiveLookingAwayRef.current = 0
+        consecutiveLookingAwayRef.current = 0;
       }
     }
     
@@ -327,7 +424,9 @@ export function useWebcamMonitoring({
     triggerAlert, 
     modelsLoaded, 
     isInvigilatorView, 
-    detectionStats.totalFramesAnalyzed
+    detectionStats.totalFramesAnalyzed,
+    calculateHeadPose,
+    isLookingAwayByPosition
   ])
 
   /* ------------------------------------------------------------------ */
@@ -343,19 +442,23 @@ export function useWebcamMonitoring({
         
         // Wait for video to be ready
         await new Promise<void>((resolve) => {
-          const onLoaded = () => {
-            videoRef.current?.removeEventListener('loadedmetadata', onLoaded)
-            resolve()
-          }
-          
-          if (videoRef.current && videoRef.current.readyState >= 3) { // HAVE_FUTURE_DATA
-            resolve()
+          if (videoRef.current && videoRef.current.readyState >= 3) {
+            resolve();
           } else {
-            videoRef.current?.addEventListener('loadedmetadata', onLoaded)
+            const onLoaded = () => {
+              videoRef.current?.removeEventListener('loadedmetadata', onLoaded);
+              resolve();
+            };
+            videoRef.current?.addEventListener('loadedmetadata', onLoaded);
           }
-        })
+        });
         
-        await videoRef.current.play()
+        try {
+          await videoRef.current.play();
+          console.log("Webcam started successfully");
+        } catch (err) {
+          console.error("Video play error:", err);
+        }
       }
       
       setIsWebcamActive(true)
@@ -368,10 +471,11 @@ export function useWebcamMonitoring({
       
       // Start processing loop
       if (!isInvigilatorView) {
+        console.log("Starting detection loop");
         animationRef.current = requestAnimationFrame(analyzeFrame)
       }
     } catch (err: any) {
-      console.error("Webcam error:", err)
+      console.error("Webcam initialization failed:", err)
       setWebcamError(
         err.message || "Webcam access failed. Check permissions and try again."
       )
@@ -392,7 +496,13 @@ export function useWebcamMonitoring({
     }
     
     setIsWebcamActive(false)
+    console.log("Webcam stopped");
   }, [])
+
+  // Debug function to get detection logs
+  const getDetectionLogs = useCallback(() => {
+    return [...detectionLogRef.current];
+  }, []);
 
   /* ------------------------------------------------------------------ */
   /* Cleanup                                                             */
@@ -414,5 +524,6 @@ export function useWebcamMonitoring({
     startWebcam,
     stopWebcam,
     detectionStats,
+    getDetectionLogs, // For debugging
   }
 }
