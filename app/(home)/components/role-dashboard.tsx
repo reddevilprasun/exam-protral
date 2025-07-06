@@ -5,6 +5,7 @@ import { SupervisorDashboard } from "./dashboard/supervisor-dashboard"
 import { FunctionReturnType } from "convex/server"
 import { api } from "@/convex/_generated/api"
 import { TeacherDashboard } from "./dashboard/teacher-dashboard"
+import StudentDashboard from "./dashboard/student-dashboard"
 
 // import { StudentDashboard } from "@/components/dashboards/student-dashboard"
 // import { ExamControllerDashboard } from "@/components/dashboards/exam-controller-dashboard"
@@ -23,8 +24,8 @@ export function RoleDashboard({ role, user }: RoleDashboardProps) {
       return <SupervisorDashboard user={user} />
     case "teacher":
       return <TeacherDashboard user={user} />
-    // case "student":
-    //   return <StudentDashboard user={user} navItems={getNavItems()} />
+    case "student":
+      return <StudentDashboard user={user} />
     // case "exam_controller":
     //   return <ExamControllerDashboard user={user} navItems={getNavItems()} />
     default:

@@ -249,9 +249,25 @@ export default defineSchema({
     maxMarks: v.float64(),
     passingMarks: v.float64(),
   })
-  .index("uniq_exam", ["subjectId", "batchId", "title"])
+  .index("uniq_exam", ["subjectId", "title"])
   .index("uniq_exam_teacher", ["createdBy", "subjectId", "title"])
-  .index("uniq_exam_teacher_and_invigilator", ["invigilator"]),
+  .index("uniq_exam_teacher_and_invigilator", ["invigilator"])
+  .index("uniq_exam_by_subject", ["subjectId"]),
+
+  examRequests: defineTable({
+    userId: v.id("users"),
+    examId: v.id("exams"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected")
+    ),
+    requestDate: v.float64(),
+    responseDate: v.optional(v.float64()),
+    responseMessage: v.optional(v.string()),
+  })
+  .index("uniq_exam_request", ["userId", "examId"])
+  .index("uniq_exam_request_by_exam_by_status", ["examId", "status"]),
   // Exam Attempts & Results
   examAttempts: defineTable({
     studentId: v.id("users"),

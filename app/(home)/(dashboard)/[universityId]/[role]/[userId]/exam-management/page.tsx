@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import {
   Plus,
   Calendar,
@@ -22,9 +21,10 @@ import { ExamType } from "../lib/types"
 import { useGetExamForSpecificTeacher } from "./api/use-get-examsForTeacher"
 import { useGetCurrentTeacher } from "../user-management/api/use-get-currentTeacher"
 import { Loading } from "@/components/Loading"
+import { useTeacherRouter } from "@/hooks/useTeacherRouter"
 
 export default function TeacherExamsPage() {
-  const router = useRouter()
+  const { push } = useTeacherRouter()
 
   const [myExams, setMyExams] = useState<ExamType[]>([])
   const [invigilationDuties, setInvigilationDuties] = useState<ExamType[]>([])
@@ -115,7 +115,7 @@ export default function TeacherExamsPage() {
   return (
     <div className="min-h-screen">
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Alert for pending requests */}
         {/* {pendingRequests.length > 0 && (
@@ -146,7 +146,7 @@ export default function TeacherExamsPage() {
           <TabsContent value="my-exams" className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Exams Created by You</h3>
-              <Button onClick={() => router.push("/teacher/create-exam")}>
+              <Button onClick={() => push("create-exam")}>
                 <Plus className="h-4 w-4 mr-2" />
                 Create New Exam
               </Button>
@@ -204,7 +204,7 @@ export default function TeacherExamsPage() {
                         <div className="flex space-x-2">
                           {canMonitor && (
                             <Button
-                              onClick={() => {}}
+                              onClick={() => push(`exam-management/${exam._id}/monitor`)}
                               className="bg-red-600 hover:bg-red-700"
                             >
                               <Eye className="h-4 w-4 mr-2" />
@@ -247,7 +247,7 @@ export default function TeacherExamsPage() {
                     <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No exams created yet</h3>
                     <p className="text-gray-500 mb-4">Create your first exam to get started.</p>
-                    <Button onClick={() => router.push("/teacher/create-exam")}>
+                    <Button onClick={() => push("create-exam")}>
                       <Plus className="h-4 w-4 mr-2" />
                       Create New Exam
                     </Button>
@@ -336,7 +336,7 @@ export default function TeacherExamsPage() {
                         <div className="flex space-x-2">
                           {canMonitor && (
                             <Button
-                              onClick={() => {}}
+                              onClick={() => push(`exam-management/${exam._id}/monitor`)}
                               className="bg-red-600 hover:bg-red-700"
                             >
                               <Eye className="h-4 w-4 mr-2" />

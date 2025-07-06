@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { LogOut, School, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import Link from "next/link";
 import { ModeToggle } from "./mode-toggle";
 import { useRouter } from "next/navigation";
@@ -19,8 +19,8 @@ export default function NavBar() {
     <header className="sticky top-0 z-50 w-full border-b bg-background shadow-sm">
       <div className="container flex h-16 items-center justify-between m-auto">
         <div className="flex items-center gap-2 font-bold text-primary">
-          <School className="h-5 w-5" />
-          <span>ExamPortal</span>
+          <img src="/logo.svg" alt="logo" />
+          <span>Examix</span>
         </div>
         <nav className="hidden gap-6 md:flex">
           <Link

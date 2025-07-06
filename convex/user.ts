@@ -283,12 +283,7 @@ export const teacherCreateStudent = mutation({
     }
     const universityId = university._id;
     // Check if the user is a university teacher
-    const teacher = await checkUserRole(
-      ctx,
-      user._id,
-      "teacher",
-      universityId
-    );
+    const teacher = await checkUserRole(ctx, user._id, "teacher", universityId);
     if (!teacher) {
       throw new ConvexError("User is not a university teacher");
     }
@@ -340,7 +335,7 @@ export const teacherCreateStudent = mutation({
     if (!studentEnrollment) {
       throw new ConvexError("Failed to create student enrollment");
     }
-    
+
     return newUser.user._id;
   },
 });
@@ -359,11 +354,14 @@ export const getCurrentTeacher = query({
       return null;
     }
     const teacherInfo = await ctx.db.get(user._id);
-    
+
     if (!teacherInfo) {
       throw new ConvexError("Teacher does not exist");
     }
-    const teachingAssignment = await ctx.db.query("teachingAssignments").withIndex("uniq_teacher_university", (q) => q.eq("teacherId", user._id)).unique();
+    const teachingAssignment = await ctx.db
+      .query("teachingAssignments")
+      .withIndex("uniq_teacher_university", (q) => q.eq("teacherId", user._id))
+      .unique();
     if (!teachingAssignment) {
       throw new ConvexError("Teacher does not have a teaching assignment");
     }
@@ -394,6 +392,56 @@ export const getCurrentTeacher = query({
   },
 });
 
+export const getCurrentStudentDetails = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      return null;
+    }
+
+    if (!user.universityId) {
+      return null;
+    }
+    const university = await ctx.db.get(user.universityId);
+    if (!university) {
+      return null;
+    }
+
+    const studentEnrollment = await ctx.db
+      .query("studentEnrollments")
+      .withIndex("uniq_student_university", (q) =>
+        q.eq("universityId", university._id).eq("studentId", user._id)
+      )
+      .unique();
+
+    if (!studentEnrollment) {
+      return null;
+    }
+
+    const course = await ctx.db.get(studentEnrollment.courseId);
+    const department = await ctx.db.get(studentEnrollment.departmentId);
+    const batch = await ctx.db.get(studentEnrollment.batchId);
+
+    if (!batch || !course || !department) {
+      return null;
+    }
+
+    const studentDetails = {
+      user: {
+        ...user
+      },
+      studentEnrollment: {
+        ...studentEnrollment
+      },
+      courseName: course.name,
+      departmentName: department.name,
+      batchName: batch.name,
+    };
+
+    return studentDetails;
+  },
+});
+
 export const getAllTeachersOfUniversity = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
@@ -415,12 +463,7 @@ export const getAllTeachersOfUniversity = query({
       "supervisor",
       universityId
     );
-    const teacher = await checkUserRole(
-      ctx,
-      user._id,
-      "teacher",
-      universityId
-    );
+    const teacher = await checkUserRole(ctx, user._id, "teacher", universityId);
 
     // If the user is neither a supervisor nor a teacher, return null
     if (!supervisor && !teacher) {
@@ -468,7 +511,7 @@ export const getAllTeachersOfUniversity = query({
         };
       })
     );
-    
+
     return teachersWithInfo;
   },
 });
@@ -488,12 +531,7 @@ export const getAllStudents = query({
     }
     const universityId = university._id;
     // Check if the user is a university teacher
-    const teacher = await checkUserRole(
-      ctx,
-      user._id,
-      "teacher",
-      universityId
-    );
+    const teacher = await checkUserRole(ctx, user._id, "teacher", universityId);
     if (!teacher) {
       return null;
     }
@@ -549,7 +587,7 @@ export const getAllStudents = query({
         };
       })
     );
-    
+
     return studentsWithInfo;
   },
 });
@@ -586,19 +624,19 @@ export const getStudentById = query({
     const department = await ctx.db.get(student.departmentId);
     const course = await ctx.db.get(student.courseId);
     const batch = await ctx.db.get(student.batchId);
-    
+
     if (!department || !course || !batch) {
       throw new ConvexError("Department, Course or Batch does not exist");
     }
-    
+
     if (department.universityId !== universityId) {
       throw new ConvexError("Department does not belong to the university");
     }
-    
+
     if (course.universityId !== universityId) {
       throw new ConvexError("Course does not belong to the university");
     }
-    
+
     if (batch.courseId !== course._id) {
       throw new ConvexError("Batch does not belong to the course");
     }
@@ -641,16 +679,13 @@ export const deleteStudent = mutation({
 
     const student = await ctx.db.get(args.studentId);
     if (!student || student.universityId !== universityId) {
-      throw new ConvexError("Student does not exist or does not belong to the university");
+      throw new ConvexError(
+        "Student does not exist or does not belong to the university"
+      );
     }
 
     // Check if the user is a university teacher
-    const teacher = await checkUserRole(
-      ctx,
-      user._id,
-      "teacher",
-      universityId
-    );
+    const teacher = await checkUserRole(ctx, user._id, "teacher", universityId);
     if (!teacher) {
       throw new ConvexError("User is not a university teacher");
     }
@@ -685,16 +720,13 @@ export const updateStudent = mutation({
 
     const student = await ctx.db.get(args.studentId);
     if (!student || student.universityId !== universityId) {
-      throw new ConvexError("Student does not exist or does not belong to the university");
+      throw new ConvexError(
+        "Student does not exist or does not belong to the university"
+      );
     }
 
     // Check if the user is a university teacher
-    const teacher = await checkUserRole(
-      ctx,
-      user._id,
-      "teacher",
-      universityId
-    );
+    const teacher = await checkUserRole(ctx, user._id, "teacher", universityId);
     if (!teacher) {
       throw new ConvexError("User is not a university teacher");
     }
@@ -711,5 +743,3 @@ export const updateStudent = mutation({
     return args.studentId;
   },
 });
-
-
