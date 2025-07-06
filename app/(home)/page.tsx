@@ -42,7 +42,7 @@ export default function LandingPage() {
                       <CheckCircle className="h-4 w-4" />
                       <span>University request approved</span>
                     </div>
-                    <h3 className="text-xl font-bold">Welcome to ExamPortal</h3>
+                    <h3 className="text-xl font-bold">Welcome to Examix</h3>
                     <p className="text-sm text-muted-foreground">
                       Your university has been created successfully. You can now
                       start managing exams.
@@ -127,11 +127,14 @@ export default function LandingPage() {
       <footer className="w-full border-t bg-background p-6">
         <div className="flex flex-col items-center justify-between gap-4 md:flex-row m-auto">
           <div className="flex items-center gap-2 font-bold">
-            <School className="h-5 w-5" />
-            <span>ExamPortal</span>
+          <img 
+          src="/logo.svg" 
+          alt="logo" 
+          className="h-8 dark:invert-[1]"
+          />
           </div>
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ExamPortal. All rights reserved.
+            © {new Date().getFullYear()} Examix. All rights reserved.
           </p>
           <div className="flex gap-4">
             <Link

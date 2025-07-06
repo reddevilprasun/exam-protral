@@ -19,8 +19,11 @@ export default function NavBar() {
     <header className="sticky top-0 z-50 w-full border-b bg-background shadow-sm">
       <div className="container flex h-16 items-center justify-between m-auto">
         <div className="flex items-center gap-2 font-bold text-primary">
-          <img src="/logo.svg" alt="logo" />
-          <span>Examix</span>
+          <img 
+          src="/logo.svg" 
+          alt="logo" 
+          className="h-12 dark:invert-[1]"
+          />
         </div>
         <nav className="hidden gap-6 md:flex">
           <Link

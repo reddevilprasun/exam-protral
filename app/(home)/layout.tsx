@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import NavBar from "./components/nav-bar";
 
 export const metadata: Metadata = {
-  title: "Exam Portal",
+  title: "Examix - Exam Management System",
   description: "Exam Portal",
 };
 
