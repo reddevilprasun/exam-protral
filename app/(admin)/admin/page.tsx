@@ -96,14 +96,12 @@ export default function AdminPage() {
               "The university creation request has been approved by the admin.",
           });
         },
-        : (error) => {
+        onError: (error) => {
           const errorMessage =
             error instanceof ConvexError
-           onError   ? (error.data as string)
+              ? (error.data as string)
               : "An error occurred";
-          toast.error("Error approving request", {
-            description: errorMessage,
-          });
+          toast.error(errorMessage);
         },
         onSettled: () => {
           setIsDialogOpen(false);
