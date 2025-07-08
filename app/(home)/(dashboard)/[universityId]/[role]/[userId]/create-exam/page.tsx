@@ -60,9 +60,11 @@ import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import { useGetTeacherQuestion } from "../question-bank/api/use-getTeacher-question";
 import { useGetTeacherQuestionGroups } from "../question-bank/api/use-getTeacher-questionGroup";
+import { useTeacherRouter } from "@/hooks/useTeacherRouter";
 
 export default function CreateExamPage() {
   const router = useRouter();
+  const { push } = useTeacherRouter();
   const searchParams = useSearchParams();
 
   // State management
@@ -300,7 +302,7 @@ export default function CreateExamPage() {
             ? "Exam saved as draft successfully."
             : "Exam created successfully.",
         });
-        router.push("/teacher/exams");
+        push("exam-management");
       },
       onError: (error) => {
         const errorMessage =
