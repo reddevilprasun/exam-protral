@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -32,7 +32,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -46,37 +45,46 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  initialExams,
-  initialQuestions,
-  students,
-  examRequests,
-} from "@/lib/mock-data";
+
 import { useWebcamMonitoring } from "@/hooks/use-webcam-monitoring";
-import { CheatingAlert, Exam, Question } from "../../../(dashboard)/[universityId]/[role]/[userId]/lib/types";
+import {
+  CheatingAlert,
+  Question as QuestionType,
+} from "../../../(dashboard)/[universityId]/[role]/[userId]/lib/types";
 import { toast } from "sonner";
 import { useExamSecurity } from "@/hooks/use-exam-security";
-import { useStudentRouter } from "@/hooks/useStudentRouter";
+import { Id } from "@/convex/_generated/dataModel";
+import { useGetExamById } from "@/app/(home)/(dashboard)/[universityId]/[role]/[userId]/exam-management/api/use-get-examById";
+import { useGetQuestionByIds } from "@/app/(home)/(dashboard)/[universityId]/[role]/[userId]/question-bank/api/use-get-QuestionByIds";
+import { Loading } from "@/components/Loading";
+import { useCurrentUser } from "@/app/(home)/api/use-current-user";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useCreateExamRequest } from "@/app/(home)/(dashboard)/[universityId]/[role]/[userId]/exam-management/api/use-create-examRequest";
+import { ConvexError } from "convex/values";
+import { useAutoSave } from "./hooks/useAutoSave";
 
 const QUESTIONS_PER_PAGE = 20;
 
 export default function TakeExamPage() {
   const router = useRouter();
   const params = useParams();
+  const examId = params.id as Id<"exams">;
 
   // Mock current student
-  const currentStudent =
-    students.find((s) => s.id === "231001001447") || students[0];
+  const { data: currentStudent, isLoading: isCurrentStudentLoading } =
+    useCurrentUser();
 
   // State management
-  const [exam, setExam] = useState<Exam | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  //const [exam, setExam] = useState<Exam | null>(null);
+  const [questions, setQuestions] = useState<QuestionType[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, any>>({});
-  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(
-    new Set()
-  );
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [answers, setAnswers] = useState<Record<Id<"questions">, any>>({});
+  const [flaggedQuestions, setFlaggedQuestions] = useState<
+    Set<Id<"questions">>
+  >(new Set());
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [, setExamStartTime] = useState<number | null>(null);
   const [examPhase, setExamPhase] = useState<
     "waiting" | "setup" | "active" | "submitted"
   >("waiting");
@@ -85,37 +93,102 @@ export default function TakeExamPage() {
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [securityViolations, setSecurityViolations] = useState<string[]>([]);
   const [cheatingAlerts, setCheatingAlerts] = useState<CheatingAlert[]>([]);
-  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [, setIsFullScreen] = useState(false);
 
   const fullScreenRef = useRef<HTMLDivElement>(null);
   const sessionId = useRef(Math.floor(Math.random() * 1000000));
 
-  // Load exam data
-  useEffect(() => {
-    const examId = Number.parseInt(params.id as string);
-    const examInfo = initialExams.find((e) => e.id === examId);
+  // Fetch exam data
+  const { data: exam, isLoading: isExamLoading } = useGetExamById(
+    params.id as Id<"exams">
+  );
 
-    if (examInfo) {
-      setExam(examInfo);
-      const examQuestions = initialQuestions.filter((q) =>
-        examInfo.questions.includes(q.id)
-      );
-      setQuestions(examQuestions);
-      setTimeLeft(examInfo.duration * 60);
+  const questionIds = useMemo(() => exam?.questions || [], [exam]);
 
-      // Check if student has requested and been approved
-      const request = examRequests.find(
-        (req) => req.examId === examId && req.studentId === currentStudent.id
-      );
-      if (request) {
-        setHasRequested(true);
-        setIsApproved(request.status === "approved");
-        if (request.status === "approved") {
-          setExamPhase("setup");
+  const { data: fetchedQuestions, isLoading: isQuestionsLoading } =
+    useGetQuestionByIds(questionIds);
+
+  const { mutated: createExamRequest, isPending: isCreatingRequest } =
+    useCreateExamRequest();
+
+  const examState = useQuery(
+    api.exam.getExamStateForStudent,
+    currentStudent
+      ? {
+          examId: params.id as Id<"exams">,
+          studentId: currentStudent.id,
         }
+      : "skip"
+  );
+
+  const { markAnswerAsDirty } = useAutoSave(params.id as Id<"exams">);
+
+  const saveAnswersMutation = useMutation(api.answers.saveStudentAnswers);
+
+  const studentAnswerSheet = useQuery(api.answers.getAnswerSheet, { examId });
+  const startExamMutation = useMutation(api.answers.startExam);
+  const submitExamMutation = useMutation(api.answers.submitExam);
+
+  const isLoading =
+    isExamLoading || isQuestionsLoading || isCurrentStudentLoading;
+
+  const isPending = isCreatingRequest;
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Standard way to trigger the browser's confirmation dialog
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Cleanup the event listener when the component unmounts
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+  //Load questions from the exam
+  useEffect(() => {
+    // Wait until the essential data is loaded before doing anything.
+    if (!exam || !fetchedQuestions) {
+      return;
+    }
+
+    // Always set the questions once they are loaded.
+    setQuestions(fetchedQuestions);
+
+    // --- State Restoration Logic (Highest Priority) ---
+    // Check if the student is rejoining an exam already in progress.
+    if (studentAnswerSheet && studentAnswerSheet.examStartTime) {
+      if(studentAnswerSheet.status === "submitted") {
+        setExamPhase("submitted");
+        toast.error("Exam already submitted. You cannot rejoin.");
+        return;
+      }
+      const startTime = studentAnswerSheet.examStartTime;
+      const durationInSeconds = exam.duration * 60;
+      const elapsedTime = (Date.now() - startTime) / 1000;
+      const remainingTime = Math.max(0, durationInSeconds - elapsedTime);
+
+      setTimeLeft(remainingTime);
+      setAnswers(studentAnswerSheet.answers || {}); // Restore answers
+      setExamPhase("active");
+      return; // Stop here, as we've found the most important state.
+    }
+
+    // --- Initial Setup Logic (Runs if not rejoining) ---
+    if (examState) {
+      if (examState === "approved") {
+        setIsApproved(true);
+        setExamPhase("setup"); // Ready for the student to click "Start"
+        setTimeLeft(exam.duration * 60); // Set the full time
+      } else if (examState === "pending") {
+        setHasRequested(true);
+        setExamPhase("waiting");
       }
     }
-  }, [params.id, currentStudent.id]);
+  }, [exam, fetchedQuestions, studentAnswerSheet, examState]);
 
   // Webcam monitoring with TensorFlow.js integration
   const {
@@ -133,9 +206,10 @@ export default function TakeExamPage() {
         description: alert.description,
       });
     },
-    studentId: currentStudent.id,
-    examId: exam?.id,
+    studentId: currentStudent?.id || "",
+    examId: exam?._id || (params.id as Id<"exams">),
     sessionId: sessionId.current,
+    invigilatorId: exam?.invigilator,
   });
 
   // Exam security
@@ -153,7 +227,8 @@ export default function TakeExamPage() {
       });
 
       // Auto-submit after 3 violations
-      if (violations.length >= 2) {
+      //TODO: Implement a more sophisticated auto-submit logic
+      if (violations.length >= 200) {
         handleAutoSubmit("Multiple security violations detected");
       }
     },
@@ -161,20 +236,20 @@ export default function TakeExamPage() {
 
   // Timer countdown
   useEffect(() => {
-    if (examPhase !== "active") return;
+    if (examPhase !== "active" || timeLeft === null) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 1) {
+        if (prev !== null && prev <= 1) {
           handleAutoSubmit("Time expired");
           return 0;
         }
-        return prev - 1;
+        return prev !== null ? prev - 1 : 0;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [examPhase]);
+  }, [examPhase, timeLeft]);
 
   // Auto-save answers
   useEffect(() => {
@@ -190,10 +265,10 @@ export default function TakeExamPage() {
 
   useEffect(() => {
     if (examPhase === "active") {
-      startWebcam()
+      startWebcam();
     }
-  }, [examPhase])
-  
+  }, [examPhase]);
+
   // Handle fullscreen changes
   useEffect(() => {
     const handleFullScreenChange = () => {
@@ -205,36 +280,49 @@ export default function TakeExamPage() {
       document.removeEventListener("fullscreenchange", handleFullScreenChange);
   }, []);
 
-  const handleRequestJoin = async () => {
-    if (!exam) return;
-
+  const handleRequestJoin = async (examId: Id<"exams">) => {
+    if (!exam) {
+      return;
+    }
     // Check if exam starts within 10 minutes
-    const examStart = new Date(`${exam.startDate}T${exam.startTime}`);
+    const examStart = new Date(exam.scheduleStart);
     const now = new Date();
     const timeDiff = examStart.getTime() - now.getTime();
     const minutesDiff = Math.floor(timeDiff / (1000 * 60));
 
     if (minutesDiff > 10) {
-      toast.error("Too early to join", {
+      toast("Too early to join", {
         description: `You can request to join this exam ${minutesDiff - 10} minutes from now.`,
       });
       return;
     }
 
-    setHasRequested(true);
-    toast("Join request submitted", {
-      description:
-        "Your request has been sent to the invigilator for approval.",
-    });
+    if (!currentStudent) {
+      return;
+    }
+    // Create join request
+    const requestData = {
+      examId,
+      userId: currentStudent.id, // Add userId to match the expected type
+    };
 
-    // Simulate approval after 30 seconds for demo
-    setTimeout(() => {
-      setIsApproved(true);
-      setExamPhase("setup");
-      toast("Request approved", {
-        description: "You can now set up your exam environment.",
-      });
-    }, 30000);
+    createExamRequest(requestData, {
+      onSuccess: () => {
+        toast("Join request submitted", {
+          description:
+            "Your request has been sent to the invigilator for approval.",
+        });
+      },
+      onError: (error) => {
+        const errorMessage =
+          error instanceof ConvexError
+            ? (error.data as string)
+            : "An error occurred";
+        toast.error("Error approving request", {
+          description: errorMessage,
+        });
+      },
+    });
   };
 
   const handleStartExam = async () => {
@@ -245,22 +333,36 @@ export default function TakeExamPage() {
       return;
     }
 
-    await enterFullscreen();
-    setExamPhase("active");
+    try {
+      // ✅ 2. Call the backend mutation to start the official timer.
+      // The mutation will return the official server-side start time.
+      const officialStartTime = await startExamMutation({ examId });
 
-    toast("Exam started", {
-      description: "Your exam session is now active. Good luck!",
-    });
+      // ✅ 3. Store the official start time in your state.
+      setExamStartTime(officialStartTime);
+
+      // 4. Now, update the UI.
+      await enterFullscreen();
+      setExamPhase("active"); // This will trigger your countdown useEffect.
+
+      toast("Exam started", {
+        description: "Your exam session is now active. Good luck!",
+      });
+    } catch (error) {
+      console.error("Failed to start exam:", error);
+      toast.error("Could not start the exam. Please try again.");
+    }
   };
 
-  const handleAnswerChange = (questionId: number, answer: any) => {
+  const handleAnswerChange = (questionId: Id<"questions">, answer: any) => {
     setAnswers((prev) => ({
       ...prev,
       [questionId]: answer,
     }));
+    markAnswerAsDirty(questionId, answer);
   };
 
-  const handleFlagQuestion = (questionId: number) => {
+  const handleFlagQuestion = (questionId: Id<"questions">) => {
     setFlaggedQuestions((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(questionId)) {
@@ -273,50 +375,86 @@ export default function TakeExamPage() {
   };
 
   const handleSubmitExam = () => {
+    stopWebcam();
     setIsSubmitDialogOpen(true);
   };
 
   const handleConfirmSubmit = async () => {
-    setExamPhase("submitted");
-    stopWebcam();
-    await exitFullscreen();
+    try {
+      // ✅ 1. Call the backend mutation with any final, unsaved answers
+      await saveAnswersMutation({ examId, changedAnswers: answers, status: "submitted" });
+      await submitExamMutation({
+        examId,
+      });
 
-    toast("Exam submitted", {
-      description: "Your exam has been submitted successfully.",
-    });
+      // ✅ 2. After the mutation is successful, clean up the UI
+      stopWebcam();
+      await exitFullscreen();
+      setExamPhase("submitted");
 
+      toast("Exam submitted successfully", {
+        description: "Your results are being calculated.",
+      });
+
+      // // ✅ 3. Navigate to the results page
+      // router.push(`/exam/${examId}/results`);
+    } catch (error) {
+      console.error("Failed to submit exam:", error);
+      toast.error("There was a problem submitting your exam.");
+    }
   };
 
   const handleAutoSubmit = async (reason: string) => {
-    setExamPhase("submitted");
-    stopWebcam();
-    await exitFullscreen();
+    try {
+      // ✅ 1. Call the backend mutation with any final, unsaved answers
+      await saveAnswersMutation({ examId, changedAnswers: answers, status: "submitted" });
+      await submitExamMutation({
+        examId,
+      });
 
-    toast.error("Exam auto-submitted", {
-      description: `Exam was automatically submitted: ${reason}`,
-    });
+      // ✅ 2. After the mutation is successful, clean up the UI
+      stopWebcam();
+      await exitFullscreen();
+      setExamPhase("submitted");
 
-    
+      toast("Exam auto-submitted", {
+        description: `Your exam was auto-submitted due to: ${reason}`,
+      });
+
+      // // ✅ 3. Navigate to the results page
+      // router.push(`/exam/${examId}/results`);
+    } catch (error) {
+      console.error("Failed to auto-submit exam:", error);
+      toast.error("There was a problem auto-submitting your exam.");
+    }
   };
 
   const formatTimeLeft = () => {
+    if (timeLeft === null || timeLeft < 0) return "00:00";
+
     const hours = Math.floor(timeLeft / 3600);
     const minutes = Math.floor((timeLeft % 3600) / 60);
-    const seconds = timeLeft % 60;
+    
+    // ✅ Use Math.floor() to get a whole number for seconds
+    const seconds = Math.floor(timeLeft % 60);
 
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      // Pad all parts for a consistent H:MM:SS format
+      return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
     }
+    
+    // Pad both minutes and seconds for a consistent MM:SS format
     return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   };
 
   const getTimeColor = () => {
+    if (timeLeft === null) return "text-gray-500"; // Default color if time is not set
     if (timeLeft < 300) return "text-red-400"; // Less than 5 minutes
     if (timeLeft < 900) return "text-yellow-400"; // Less than 15 minutes
     return "text-green-400";
   };
 
-  const getQuestionStatus = (questionId: number) => {
+  const getQuestionStatus = (questionId: Id<"questions">) => {
     if (answers[questionId] !== undefined) return "answered";
     if (flaggedQuestions.has(questionId)) return "flagged";
     return "unanswered";
@@ -341,6 +479,9 @@ export default function TakeExamPage() {
   const totalPages = Math.ceil(questions.length / QUESTIONS_PER_PAGE);
   const answeredCount = Object.keys(answers).length;
   const progressPercentage = (answeredCount / questions.length) * 100;
+
+  // If exam is not loaded yet, show loading state
+  if (isLoading) return <Loading />;
 
   if (!exam) {
     return (
@@ -378,7 +519,7 @@ export default function TakeExamPage() {
               </div>
               <div>
                 <span className="text-gray-600">Total Marks:</span>
-                <span className="ml-2 font-medium">{exam.totalMarks}</span>
+                <span className="ml-2 font-medium">{exam?.maxMarks}</span>
               </div>
               <div>
                 <span className="text-gray-600">Questions:</span>
@@ -396,7 +537,11 @@ export default function TakeExamPage() {
                   You can request to join this exam up to 10 minutes before the
                   scheduled start time.
                 </p>
-                <Button onClick={handleRequestJoin} size="lg">
+                <Button
+                  onClick={() => handleRequestJoin(exam._id)}
+                  disabled={isPending}
+                  size="lg"
+                >
                   Request to Join Exam
                 </Button>
               </div>
@@ -657,7 +802,7 @@ export default function TakeExamPage() {
                   (currentPage + 1) * QUESTIONS_PER_PAGE,
                   questions.length
                 )}{" "}
-                of {questions.length}
+                `` of {questions.length}
               </p>
             </div>
           </div>
@@ -753,13 +898,14 @@ export default function TakeExamPage() {
           {/* Question Grid */}
           <div className="grid grid-cols-4 gap-2 mb-4">
             {questions.map((question, index) => {
-              const status = getQuestionStatus(question.id);
+              if (!question) return null;
+              const status = getQuestionStatus(question._id);
               const pageIndex = Math.floor(index / QUESTIONS_PER_PAGE);
               const isCurrentPage = pageIndex === currentPage;
 
               return (
                 <button
-                  key={question.id}
+                  key={question._id}
                   onClick={() => {
                     if (pageIndex !== currentPage) {
                       setCurrentPage(pageIndex);
@@ -820,12 +966,16 @@ export default function TakeExamPage() {
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-4xl mx-auto space-y-6">
             {getCurrentPageQuestions().map((question, index) => {
+              if (!question) return null;
               const globalIndex = currentPage * QUESTIONS_PER_PAGE + index;
-              const isAnswered = answers[question.id] !== undefined;
-              const isFlagged = flaggedQuestions.has(question.id);
+              const isAnswered = answers[question._id] !== undefined;
+              const isFlagged = flaggedQuestions.has(question._id);
 
               return (
-                <Card key={question.id} className="bg-gray-800 border-gray-700">
+                <Card
+                  key={question._id}
+                  className="bg-gray-800 border-gray-700"
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -836,10 +986,10 @@ export default function TakeExamPage() {
                           )}
                         </CardTitle>
                         <CardDescription className="text-gray-300 text-base">
-                          {question.text}
+                          {question.questionText}
                         </CardDescription>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-col items-end space-y-2 ml-4">
                         <Badge
                           variant="outline"
                           className="text-white border-white"
@@ -849,7 +999,7 @@ export default function TakeExamPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleFlagQuestion(question.id)}
+                          onClick={() => handleFlagQuestion(question._id)}
                           className={
                             isFlagged ? "bg-yellow-600 hover:bg-yellow-700" : ""
                           }
@@ -862,27 +1012,27 @@ export default function TakeExamPage() {
 
                   <CardContent className="space-y-4">
                     {/* Question content based on type */}
-                    {question.type === "mcq" && question.options && (
+                    {question.questionType === "mcq" && question.options && (
                       <RadioGroup
-                        value={answers[question.id]?.toString() || ""}
+                        value={answers[question._id]?.toString() || ""}
                         onValueChange={(value) =>
                           handleAnswerChange(
-                            question.id,
+                            question._id,
                             Number.parseInt(value)
                           )
                         }
                       >
-                        {question.options.map((option) => (
+                        {question.options.map((option, index) => (
                           <div
-                            key={option.id}
+                            key={index}
                             className="flex items-center space-x-2"
                           >
                             <RadioGroupItem
-                              value={option.id.toString()}
-                              id={`q${question.id}-option-${option.id}`}
+                              value={index.toString()}
+                              id={`q${question._id}-option-${index}`}
                             />
                             <Label
-                              htmlFor={`q${question.id}-option-${option.id}`}
+                              htmlFor={`q${question._id}-option-${index}`}
                               className="text-white cursor-pointer flex-1"
                             >
                               {option.text}
@@ -892,20 +1042,20 @@ export default function TakeExamPage() {
                       </RadioGroup>
                     )}
 
-                    {question.type === "true_false" && (
+                    {question.questionType === "true_false" && (
                       <RadioGroup
-                        value={answers[question.id]?.toString() || ""}
+                        value={answers[question._id]?.toString() || ""}
                         onValueChange={(value) =>
-                          handleAnswerChange(question.id, value === "true")
+                          handleAnswerChange(question._id, value === "true")
                         }
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem
                             value="true"
-                            id={`q${question.id}-true`}
+                            id={`q${question._id}-true`}
                           />
                           <Label
-                            htmlFor={`q${question.id}-true`}
+                            htmlFor={`q${question._id}-true`}
                             className="text-white cursor-pointer"
                           >
                             True
@@ -914,10 +1064,10 @@ export default function TakeExamPage() {
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem
                             value="false"
-                            id={`q${question.id}-false`}
+                            id={`q${question._id}-false`}
                           />
                           <Label
-                            htmlFor={`q${question.id}-false`}
+                            htmlFor={`q${question._id}-false`}
                             className="text-white cursor-pointer"
                           >
                             False
@@ -926,29 +1076,29 @@ export default function TakeExamPage() {
                       </RadioGroup>
                     )}
 
-                    {(question.type === "short_answer" ||
-                      question.type === "fill_blank") && (
+                    {(question.questionType === "saq" ||
+                      question.questionType === "fill_in_the_blank") && (
                       <Input
-                        value={answers[question.id] || ""}
+                        value={answers[question._id] || ""}
                         onChange={(e) =>
-                          handleAnswerChange(question.id, e.target.value)
+                          handleAnswerChange(question._id, e.target.value)
                         }
                         placeholder="Enter your answer..."
                         className="bg-gray-700 border-gray-600 text-white"
                       />
                     )}
 
-                    {question.type === "descriptive" && (
+                    {/* {question.questionType === "saq" && (
                       <Textarea
-                        value={answers[question.id] || ""}
+                        value={answers[question._id] || ""}
                         onChange={(e) =>
-                          handleAnswerChange(question.id, e.target.value)
+                          handleAnswerChange(question._id, e.target.value)
                         }
                         placeholder="Write your detailed answer here..."
                         rows={6}
                         className="bg-gray-700 border-gray-600 text-white"
                       />
-                    )}
+                    )} */}
 
                     {/* Answer status */}
                     <div className="flex items-center justify-between pt-2">

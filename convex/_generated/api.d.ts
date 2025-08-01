@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as admin from "../admin.js";
+import type * as answers from "../answers.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as customProfile from "../customProfile.js";
@@ -21,6 +22,7 @@ import type * as exam from "../exam.js";
 import type * as http from "../http.js";
 import type * as lib_batchInfo from "../lib/batchInfo.js";
 import type * as lib_userInfo from "../lib/userInfo.js";
+import type * as proctoring from "../proctoring.js";
 import type * as questions from "../questions.js";
 import type * as university from "../university.js";
 import type * as user from "../user.js";
@@ -35,6 +37,7 @@ import type * as user from "../user.js";
  */
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  answers: typeof answers;
   auth: typeof auth;
   crons: typeof crons;
   customProfile: typeof customProfile;
@@ -42,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/batchInfo": typeof lib_batchInfo;
   "lib/userInfo": typeof lib_userInfo;
+  proctoring: typeof proctoring;
   questions: typeof questions;
   university: typeof university;
   user: typeof user;

@@ -1,7 +1,26 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { checkUserRole, getCurrentUser } from "./lib/userInfo";
+import { Id } from "./_generated/dataModel";
 
+export const getExamForGrading = internalQuery({
+  args: { examId: v.id("exams") },
+  handler: async (ctx, { examId }) => {
+    const exam = await ctx.db.get(examId);
+    if (!exam) return null;
+    // Fetch the full question documents
+    const questionsDoc = await Promise.all(
+      exam.questions.map((id) => ctx.db.get(id as Id<"questions">))
+    );
+    // Filter out any null questions
+    return { ...exam, questionsDoc: questionsDoc.filter(Boolean) };
+  },
+});
 export const createExam = mutation({
   args: {
     title: v.string(),
@@ -250,6 +269,85 @@ export const deleteExam = mutation({
   },
 });
 
+export const getStudentExamResult = query({
+  args: {
+    studentId: v.id("users"),
+    examId: v.id("exams"),
+  },
+  async handler(ctx, { studentId, examId }) {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new ConvexError("User not authenticated");
+    }
+
+    if (!user.universityId) {
+      throw new ConvexError("User does not belong to any university");
+    }
+
+    // Check if the user is a student
+    const hasPermission = await checkUserRole(
+      ctx,
+      user._id,
+      "student",
+      user.universityId
+    );
+    if (!hasPermission) {
+      throw new ConvexError("You do not have permission to view exam results");
+    }
+
+    // Fetch exam details
+    const exam = await ctx.db.get(examId);
+    if (!exam) {
+      throw new ConvexError("Exam not found");
+    }
+
+    // Fetch the student's exam state
+    const examResult = await ctx.db
+      .query("examResults")
+      .withIndex("by_student_and_exam", (q) =>
+        q.eq("studentId", studentId).eq("examId", examId)
+      )
+      .first();
+
+    return examResult;
+  },
+});
+
+export const getAllResultsForAStudent = query({
+  args: {
+    studentId: v.id("users"),
+  },
+  async handler(ctx, { studentId }) {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new ConvexError("User not authenticated");
+    }
+    if (!user.universityId) {
+      throw new ConvexError("User does not belong to any university");
+    }
+    // Check if the user is a student
+    const hasPermission = await checkUserRole(
+      ctx,
+      user._id,
+      "student",
+      user.universityId
+    );
+    if (!hasPermission) {
+      throw new ConvexError("You do not have permission to view exam results");
+    }
+    // Fetch all exam results for the student
+    const examResults = await ctx.db
+      .query("examResults")
+      .withIndex("by_student", (q) => q.eq("studentId", studentId))
+      .collect();
+    if (examResults.length === 0) {
+      return []; // No results found for the student
+    }
+    return examResults;
+
+  }})
+
+
 export const getExamById = query({
   args: {
     examId: v.id("exams"),
@@ -397,8 +495,8 @@ export const getExamForSpecificStudent = query({
       return null; // Student enrollment not found
     }
 
-    const exams = (await ctx.db.query("exams").collect()).filter(
-      exam => exam.batchId.includes(studentEnrollment.batchId)
+    const exams = (await ctx.db.query("exams").collect()).filter((exam) =>
+      exam.batchId.includes(studentEnrollment.batchId)
     );
 
     if (exams.length === 0) {
@@ -419,9 +517,12 @@ export const getExamForSpecificStudent = query({
           : null;
         const creatorDetails = await ctx.db.get(exam.createdBy);
 
-        const examRequests = await ctx.db.query("examRequests").withIndex("uniq_exam_request_by_exam_by_status", (q) =>
-          q.eq("examId", exam._id)
-        ).collect();
+        const examRequests = await ctx.db
+          .query("examRequests")
+          .withIndex("uniq_exam_request_by_exam_by_status", (q) =>
+            q.eq("examId", exam._id)
+          )
+          .collect();
 
         const studentRequest = examRequests.find(
           (request) => request.userId === user._id
@@ -440,10 +541,10 @@ export const getExamForSpecificStudent = query({
             : null,
         };
       })
-    );  
+    );
     return examsWithDetails;
-  }
-})
+  },
+});
 
 export const createExamRequest = mutation({
   args: {
@@ -468,7 +569,9 @@ export const createExamRequest = mutation({
       user.universityId
     );
     if (!hasPermission) {
-      throw new ConvexError("You do not have permission to create exam requests");
+      throw new ConvexError(
+        "You do not have permission to create exam requests"
+      );
     }
 
     const { examId } = args;
@@ -488,12 +591,17 @@ export const createExamRequest = mutation({
     const studentEnrollment = await ctx.db
       .query("studentEnrollments")
       .withIndex("uniq_student_university", (q) =>
-        user.universityId ? q.eq("universityId", user.universityId).eq("studentId", user._id) : q
+        user.universityId
+          ? q.eq("universityId", user.universityId).eq("studentId", user._id)
+          : q
       )
       .unique();
 
     // If the user is not enrolled in the exam's batches, throw an error
-    if (!studentEnrollment || !exam.batchId.includes(studentEnrollment.batchId)) {
+    if (
+      !studentEnrollment ||
+      !exam.batchId.includes(studentEnrollment.batchId)
+    ) {
       throw new ConvexError("You are not enrolled in this exam's batch");
     }
 
@@ -505,16 +613,62 @@ export const createExamRequest = mutation({
     });
 
     return examRequestId;
-  }
-})
+  },
+});
+
+export const getExamStateForStudent = query({
+  args: {
+    examId: v.id("exams"),
+    studentId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      return null; // User not authenticated
+    }
+
+    if (!user.universityId) {
+      return null; // User does not belong to any university
+    }
+
+    // Check if the user is a student
+    const hasPermission = await checkUserRole(
+      ctx,
+      user._id,
+      "student",
+      user.universityId
+    );
+    if (!hasPermission) {
+      return null; // User does not have permission to view exam state
+    }
+
+    const { examId, studentId } = args;
+
+    // Fetch exam details
+    const exam = await ctx.db.get(examId);
+    if (!exam) {
+      return null; // Exam not found
+    }
+
+    // Fetch the student's exam state
+    const examState = await ctx.db
+      .query("examRequests")
+      .withIndex("uniq_exam_request", (q) =>
+        q.eq("userId", studentId).eq("examId", examId)
+      )
+      .unique();
+    if (!examState) {
+      return null; // No exam state found for this student
+    }
+
+    return examState.status;
+  },
+});
 
 export const changeExamRequestStatus = mutation({
   args: {
     examRequestId: v.id("examRequests"),
-    status: v.union(
-      v.literal("approved"),
-      v.literal("rejected")
-    ),
+    status: v.union(v.literal("approved"), v.literal("rejected")),
   },
   async handler(ctx, args) {
     const user = await getCurrentUser(ctx);
@@ -534,7 +688,9 @@ export const changeExamRequestStatus = mutation({
       user.universityId
     );
     if (!hasPermission) {
-      throw new ConvexError("You do not have permission to change exam request status");
+      throw new ConvexError(
+        "You do not have permission to change exam request status"
+      );
     }
 
     const { examRequestId, status } = args;
@@ -557,14 +713,16 @@ export const changeExamRequestStatus = mutation({
 
     // Check if the user is the creator of the exam or an invigilator
     if (exam.createdBy !== user._id && exam.invigilator !== user._id) {
-      throw new ConvexError("You do not have permission to change this exam request status");
+      throw new ConvexError(
+        "You do not have permission to change this exam request status"
+      );
     }
 
     // Update exam request status
     await ctx.db.patch(examRequestId, { status });
 
     return examRequestId;
-  }
+  },
 });
 
 export const getExamRequestsForTeacher = query({
@@ -594,7 +752,7 @@ export const getExamRequestsForTeacher = query({
     }
 
     const { examId } = args;
-    if(!examId) {
+    if (!examId) {
       return null; // Exam ID is required to fetch requests
     }
 
@@ -606,7 +764,9 @@ export const getExamRequestsForTeacher = query({
 
     // Check if the user is the creator of the exam or an invigilator
     if (exam.createdBy !== user._id && exam.invigilator !== user._id) {
-      throw new ConvexError("You do not have permission to view exam requests for this exam");
+      throw new ConvexError(
+        "You do not have permission to view exam requests for this exam"
+      );
     }
 
     // Fetch exam requests for the teacher
@@ -628,12 +788,17 @@ export const getExamRequestsForTeacher = query({
         if (!userDetails) {
           return null; // User not found
         }
-        const studentEnrollment = await ctx.db.query("studentEnrollments").withIndex("uniq_student_university", (q) => q.eq("universityId", universityId).eq("studentId", request.userId)).unique()
-        if(!studentEnrollment) {
+        const studentEnrollment = await ctx.db
+          .query("studentEnrollments")
+          .withIndex("uniq_student_university", (q) =>
+            q.eq("universityId", universityId).eq("studentId", request.userId)
+          )
+          .unique();
+        if (!studentEnrollment) {
           return null;
         }
-        const batch = await ctx.db.get(studentEnrollment.batchId)
-        if(!batch) return null;
+        const batch = await ctx.db.get(studentEnrollment.batchId);
+        if (!batch) return null;
 
         return {
           ...request,
@@ -643,13 +808,13 @@ export const getExamRequestsForTeacher = query({
             lastName: userDetails.lastName,
             email: userDetails.email,
           },
-          batchName: batch.name
+          batchName: batch.name,
         };
       })
     );
 
     return examRequestsWithDetails;
-  }
+  },
 });
 // This mutation updates the status of all exams based on the current time
 export const updatedExamStatus = internalMutation({

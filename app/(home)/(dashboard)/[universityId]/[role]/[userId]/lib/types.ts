@@ -3,6 +3,7 @@ import { useGetBatch } from "../batch-management/api/use-get-batch";
 import { useGetTeacherQuestion } from "../question-bank/api/use-getTeacher-question";
 import { useGetTeacherQuestionGroups } from "../question-bank/api/use-getTeacher-questionGroup";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 export type QuestionType = NonNullable<
   ReturnType<typeof useGetTeacherQuestion>["data"]
@@ -30,7 +31,7 @@ export type ExamRequest = NonNullable<FunctionReturnType<typeof api.exam.getExam
 export interface CheatingAlert {
   id: number
   sessionId: number
-  examId: number
+  examId: Id<"exams">
   studentId: string
   type:
     | "phone_detected"
@@ -69,26 +70,7 @@ export interface StudentSession {
 }
 
 //Mocks Types
-export interface Question {
-  id: number
-  text: string
-  type: "mcq" | "true_false" | "short_answer" | "descriptive" | "fill_blank" | "matching"
-  subject: number
-  difficulty: "easy" | "medium" | "hard"
-  marks: number
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  createdBy: string
-  status: "active" | "inactive"
-  options?: Array<{
-    id: number
-    text: string
-    isCorrect: boolean
-  }>
-  correctAnswer?: boolean | string
-  answer?: string
-}
+export type Question  = FunctionReturnType<typeof api.questions.getQuestionById>
 
 export interface QuestionGroup {
   id: number
@@ -104,32 +86,7 @@ export interface QuestionGroup {
   createdBy: string
 }
 
-export interface Exam {
-  id: number
-  title: string
-  description: string
-  subject: number
-  course: string
-  batches: number[]
-  totalMarks: number
-  duration: number
-  startDate: string
-  startTime: string
-  endDate: string
-  endTime: string
-  instructions: string
-  allowedAttempts: number
-  status: "draft" | "scheduled" | "running" | "completed"
-  questions: number[]
-  questionGroups?: number[]
-  invigilator?: number | null
-  createdAt: string
-  updatedAt: string
-  createdBy: string
-  studentsEnrolled: number
-  studentsCompleted: number
-  averageScore: number
-}
+export type Exam = FunctionReturnType<typeof api.exam.getExamById> 
 
 export interface Teacher {
   id: number
@@ -201,7 +158,7 @@ export interface StudentSession {
 export interface CheatingAlert {
   id: number
   sessionId: number
-  examId: number
+  examId: Id<"exams">
   studentId: string
   type:
     | "phone_detected"

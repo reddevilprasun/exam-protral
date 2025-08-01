@@ -340,10 +340,6 @@ export const getQuestionsByIds = query({
         if (!question) {
           return null;
         }
-        // Check if the user is authorized to view the question
-        if (question.createdBy !== user._id) {
-          return null;  
-        }
         return question;
       })
     );

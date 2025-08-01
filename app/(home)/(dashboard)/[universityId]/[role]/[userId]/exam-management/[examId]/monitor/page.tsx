@@ -1,31 +1,29 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Users,
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Eye,
   EyeOff,
   Shield,
-  Camera,
   Phone,
   UserX,
   Volume2,
   Activity,
   Ban,
-} from "lucide-react"
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -33,178 +31,177 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Id } from "@/convex/_generated/dataModel"
-import { useGetExamById } from "../../api/use-get-examById"
-import { useGetCurrentTeacher } from "../../../user-management/api/use-get-currentTeacher"
-import { useGetExamRequests } from "../../api/use-get-examsRequests"
-import { toast } from "sonner"
-import { useTeacherRouter } from "@/hooks/useTeacherRouter"
-import { useChangeExamRequest } from "../../api/use-change-examRequest"
-import { ConvexError } from "convex/values"
-import { CheatingAlert, ExamRequest, StudentSession } from "../../../lib/types"
-import { Loading } from "@/components/Loading"
-import { currentTeacherMock, initialExams, studentSessions } from "@/lib/mock-data";
+} from "@/components/ui/dialog";
+import { Id } from "@/convex/_generated/dataModel";
+import { useGetExamById } from "../../api/use-get-examById";
+import { useGetCurrentTeacher } from "../../../user-management/api/use-get-currentTeacher";
+import { useGetExamRequests } from "../../api/use-get-examsRequests";
+import { toast } from "sonner";
+import { useTeacherRouter } from "@/hooks/useTeacherRouter";
+import { useChangeExamRequest } from "../../api/use-change-examRequest";
+import { ConvexError } from "convex/values";
+import { CheatingAlert, ExamRequest, StudentSession } from "../../../lib/types";
+import { Loading } from "@/components/Loading";
+import {
+  currentTeacherMock,
+  initialExams,
+  studentSessions,
+} from "@/lib/mock-data";
+import LiveMonitoringGrid from "../../components/LiveMonitoringGrid";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 export default function ExamMonitorPage() {
-
   const { push, buildPath } = useTeacherRouter();
   const params = useParams();
-  const examId = params.examId as Id<"exams">
+  const examId = params.examId as Id<"exams">;
   //TODO: Mock Data Implement later
-  const [sessions, setSessions] = useState<StudentSession[]>([])
-  const [selectedSession, setSelectedSession] = useState<StudentSession | null>(null)
-  const [verificationNotes, setVerificationNotes] = useState("")
-  const [resolutionNotes, setResolutionNotes] = useState("")
-  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false)
-  const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false)
-  const [selectedRequest, setSelectedRequest] = useState<ExamRequest>(null)
-  const [selectedAlert, setSelectedAlert] = useState<CheatingAlert | null>(null)
+  const [sessions, setSessions] = useState<StudentSession[]>([]);
+  const [selectedSession, setSelectedSession] = useState<StudentSession | null>(
+    null
+  );
+  const [verificationNotes, setVerificationNotes] = useState("");
+  const [resolutionNotes, setResolutionNotes] = useState("");
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<ExamRequest>(null);
+  const [selectedAlert, setSelectedAlert] = useState<CheatingAlert | null>(
+    null
+  );
 
-  const {
-    data: exam,
-    isLoading: examLoading
-  } = useGetExamById(examId)
+  const { data: exam, isLoading: examLoading } = useGetExamById(examId);
 
-  const {
-    data: currentTeacher,
-    isLoading: teacherLoading,
-  } = useGetCurrentTeacher();
+  const { data: currentTeacher, isLoading: teacherLoading } =
+    useGetCurrentTeacher();
 
-  const {
-    data: examRequests,
-    isLoading: requestsLoading,
-  } = useGetExamRequests(examId);
-
-  console.log(
-    "Exam request", examRequests
-  )
+  const { data: examRequests, isLoading: requestsLoading } =
+    useGetExamRequests(examId);
 
   const isLoading = examLoading || teacherLoading || requestsLoading;
 
-
-
   //Mutations
-  const {
-    mutated: changeExamRequestStatus,
-    isPending: isChangingRequest,
-  } = useChangeExamRequest();
+  const { mutated: changeExamRequestStatus, isPending: isChangingRequest } =
+    useChangeExamRequest();
 
   useEffect(() => {
     if (exam && exam.invigilator !== currentTeacher?.id) {
-      toast(
-        "Access Denied",
-        {
+      toast("Access Denied", {
         description: "You are not authorized to monitor this exam.",
-      })
-      push("exam-management")
+      });
+      push("exam-management");
     }
 
     // MOCK: Setup mock data only if it's not set
-  if (sessions.length === 0) {
-    const examInfo = initialExams.find((e) => e.id === 1)
-    if (examInfo && examInfo.invigilator === currentTeacherMock.id) {
-      const examSessions = studentSessions.filter((s) => s.examId === 1)
-      setSessions(examSessions)
+    if (sessions.length === 0) {
+      const examInfo = initialExams.find((e) => e.id === 1);
+      if (examInfo && examInfo.invigilator === currentTeacherMock.id) {
+        const examSessions = studentSessions.filter((s) => s.examId === 1);
+        setSessions(examSessions);
+      }
     }
-  }
-  }, [exam, currentTeacher, push])
+  }, [exam, currentTeacher, push]);
 
   const handleApproveRequest = async (requestId: Id<"examRequests">) => {
-    const request = examRequests?.find((req) => req?._id === requestId)
-    changeExamRequestStatus({
-      examRequestId: requestId,
-      status: "approved",
-    }, {
-      onSuccess:() => {
-        toast("Request Approved", {
-          description: `The ${request?.user.firstName} has been approved to join the exam.`,
-        })
+    const request = examRequests?.find((req) => req?._id === requestId);
+    changeExamRequestStatus(
+      {
+        examRequestId: requestId,
+        status: "approved",
       },
-      onError: (error) => {
-        const errorMessage =
-          error instanceof ConvexError
-            ? (error.data as string)
-            : "An error occurred";
-        toast.error("Error approving request", {
-          description: errorMessage,
-        });
-      },
-      onSettled: () => {
-        setIsRequestDialogOpen(false)
+      {
+        onSuccess: () => {
+          toast("Request Approved", {
+            description: `The ${request?.user.firstName} has been approved to join the exam.`,
+          });
+        },
+        onError: (error) => {
+          const errorMessage =
+            error instanceof ConvexError
+              ? (error.data as string)
+              : "An error occurred";
+          toast.error("Error approving request", {
+            description: errorMessage,
+          });
+        },
+        onSettled: () => {
+          setIsRequestDialogOpen(false);
+        },
       }
-    })
-  }
+    );
+  };
 
   const handleRejectRequest = async (requestId: Id<"examRequests">) => {
-    const request = examRequests?.find((req) => req?._id === requestId)
-    changeExamRequestStatus({
-      examRequestId: requestId,
-      status: "rejected",
-    }, {
-      onSuccess:() => {
-        toast("Request Rejected", {
-          description: `The ${request?.user.firstName} has been rejected from joining the exam.`,
-        })
+    const request = examRequests?.find((req) => req?._id === requestId);
+    changeExamRequestStatus(
+      {
+        examRequestId: requestId,
+        status: "rejected",
       },
-      onError: (error) => {
-        const errorMessage =
-          error instanceof ConvexError
-            ? (error.data as string)
-            : "An error occurred";
-        toast.error("Error rejecting request", {
-          description: errorMessage,
-        });
-      },
-      onSettled: () => {
-        setIsRequestDialogOpen(false)
+      {
+        onSuccess: () => {
+          toast("Request Rejected", {
+            description: `The ${request?.user.firstName} has been rejected from joining the exam.`,
+          });
+        },
+        onError: (error) => {
+          const errorMessage =
+            error instanceof ConvexError
+              ? (error.data as string)
+              : "An error occurred";
+          toast.error("Error rejecting request", {
+            description: errorMessage,
+          });
+        },
+        onSettled: () => {
+          setIsRequestDialogOpen(false);
+        },
       }
-    })
-  }
+    );
+  };
 
   const handleResolveAlert = (alert: any) => {
-   //TODO: Implement alert resolution logic
-  }
+    //TODO: Implement alert resolution logic
+  };
 
   const getAlertIcon = (type: CheatingAlert["type"]) => {
     switch (type) {
       case "phone_detected":
-        return <Phone className="h-4 w-4" />
+        return <Phone className="h-4 w-4" />;
       case "looking_away":
-        return <EyeOff className="h-4 w-4" />
+        return <EyeOff className="h-4 w-4" />;
       case "multiple_faces":
-        return <Users className="h-4 w-4" />
+        return <Users className="h-4 w-4" />;
       case "no_face":
-        return <UserX className="h-4 w-4" />
+        return <UserX className="h-4 w-4" />;
       case "suspicious_movement":
-        return <Activity className="h-4 w-4" />
+        return <Activity className="h-4 w-4" />;
       case "audio_detected":
-        return <Volume2 className="h-4 w-4" />
+        return <Volume2 className="h-4 w-4" />;
       case "tab_switch":
-        return <Ban className="h-4 w-4" />
+        return <Ban className="h-4 w-4" />;
       case "fullscreen_exit":
-        return <Ban className="h-4 w-4" />
+        return <Ban className="h-4 w-4" />;
       default:
-        return <AlertTriangle className="h-4 w-4" />
+        return <AlertTriangle className="h-4 w-4" />;
     }
-  }
+  };
 
   const getSeverityBadge = (severity: CheatingAlert["severity"]) => {
     switch (severity) {
       case "high":
-        return <Badge variant="destructive">High</Badge>
+        return <Badge variant="destructive">High</Badge>;
       case "medium":
         return (
           <Badge variant="secondary" className="bg-orange-100 text-orange-800">
             Medium
           </Badge>
-        )
+        );
       case "low":
-        return <Badge variant="outline">Low</Badge>
+        return <Badge variant="outline">Low</Badge>;
       default:
-        return <Badge variant="outline">{severity}</Badge>
+        return <Badge variant="outline">{severity}</Badge>;
     }
-  }
+  };
 
   const getSessionStatusBadge = (status: StudentSession["status"]) => {
     switch (status) {
@@ -213,31 +210,165 @@ export default function ExamMonitorPage() {
           <Badge variant="default" className="bg-green-600">
             Active
           </Badge>
-        )
+        );
       case "flagged":
         return (
           <Badge variant="destructive" className="animate-pulse">
             Flagged
           </Badge>
-        )
+        );
       case "completed":
-        return <Badge variant="outline">Completed</Badge>
+        return <Badge variant="outline">Completed</Badge>;
       case "terminated":
-        return <Badge variant="destructive">Terminated</Badge>
+        return <Badge variant="destructive">Terminated</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge variant="outline">{status}</Badge>;
     }
-  }
+  };
 
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-    })
-  }
+    });
+  };
 
-  if(isLoading) return <Loading/>
+  const students = useQuery(api.proctoring.getStudentsForExamQuery, { examId });
+
+  // --- START: FINAL WEBCAM MONITORING LOGIC ---
+
+  const proctoringData = useQuery(api.proctoring.getActiveProctoringData, {
+    examId,
+  });
+  const sendSignal = useMutation(api.proctoring.sendProctoringSignal);
+
+  const activeSessions = proctoringData; // The query now returns a clean array
+
+  const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const [videoStreams, setVideoStreams] = useState<
+    Map<Id<"users">, MediaStream>
+  >(new Map());
+  const restartSentRef = useRef(false);
+
+  // ✅ EFFECT #1: Manages the PeerConnection objects.
+  // This effect only runs when the list of active sessions changes.
+  useEffect(() => {
+    if (!activeSessions) return;
+
+    const activeConnectionIds = new Set(
+      activeSessions.map((data) => data.session.connectionId)
+    );
+    const currentPCs = peerConnectionsRef.current;
+
+    // Close and remove any stale connections
+    for (const [connectionId, pc] of currentPCs.entries()) {
+      if (!activeConnectionIds.has(connectionId)) {
+        pc.close();
+        currentPCs.delete(connectionId);
+      }
+    }
+
+    // Create new connections for new sessions
+    for (const data of activeSessions) {
+      const { session, student } = data;
+      if (!student || !session || currentPCs.has(session.connectionId))
+        continue;
+
+      const { studentId, connectionId } = session;
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
+      currentPCs.set(connectionId, pc);
+
+      pc.ontrack = (event) => {
+        setVideoStreams((prev) =>
+          new Map(prev).set(studentId, event.streams[0])
+        );
+      };
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          sendSignal({
+            examId,
+            recipientId: studentId,
+            connectionId,
+            type: "candidate",
+            data: JSON.stringify(event.candidate),
+          });
+        }
+      };
+    }
+  }, [activeSessions, examId, sendSignal]);
+
+  // ✅ EFFECT #2: Processes the signals for the connections created above.
+  // This effect runs when the signals change, but it does NOT recreate the connections.
+  useEffect(() => {
+    if (!activeSessions) return;
+
+    const processSignals = async () => {
+      for (const data of activeSessions) {
+        const { session, signals } = data;
+        if (!session || !signals || signals.length === 0) continue;
+
+        const { studentId, connectionId } = session;
+        const pc = peerConnectionsRef.current.get(connectionId);
+
+        if (!pc || pc.connectionState === "closed") continue;
+
+        const offer = signals.find((s) => s.type === "offer");
+        if (offer && !pc.remoteDescription) {
+          const offerData = JSON.parse(offer.data);
+          await pc.setRemoteDescription(new RTCSessionDescription(offerData));
+
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+
+          await sendSignal({
+            examId,
+            recipientId: studentId,
+            connectionId,
+            type: "answer",
+            data: JSON.stringify(answer),
+          });
+        }
+
+        if (pc.remoteDescription) {
+          for (const signal of signals) {
+            if (signal.type === "candidate") {
+              const candidateData = JSON.parse(signal.data);
+              if (pc.signalingState !== "closed") {
+                await pc.addIceCandidate(new RTCIceCandidate(candidateData));
+              }
+            }
+          }
+        }
+      }
+    };
+    processSignals();
+    if (activeSessions.length > 0 && !restartSentRef.current) {
+      activeSessions.forEach((data) => {
+        sendSignal({
+          examId,
+          recipientId: data.session.studentId,
+          connectionId: data.session.connectionId,
+          type: "restart",
+          data: "Please restart",
+        });
+      });
+      restartSentRef.current = true;
+    }
+  }, [activeSessions, examId, sendSignal]);
+
+  // Main cleanup for when the entire component unmounts
+  useEffect(() => {
+    return () => {
+      peerConnectionsRef.current.forEach((pc) => pc.close());
+    };
+  }, []);
+
+  // --- END: FINAL WEBCAM MONITORING LOGIC ---
+
+  if (isLoading) return <Loading />;
 
   if (!exam) {
     return (
@@ -247,7 +378,7 @@ export default function ExamMonitorPage() {
           <Button onClick={() => push("exam-management")}>Back to Exams</Button>
         </div>
       </div>
-    )
+    );
   }
 
   // const pendingRequests = requests.filter((req) => req.status === "pending")
@@ -257,23 +388,23 @@ export default function ExamMonitorPage() {
   return (
     <div className="min-h-screen">
       <header className="shadow-sm border-b">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-start justify-end space-x-4">
-              <Button variant="ghost" onClick={() => push("exam-management")}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Exams
-              </Button>
-              <div>
-                <h1 className="text-xl font-semibold ">{exam.title}</h1>
-                <p className="text-sm text-gray-500">Live Monitoring Dashboard</p>
-              </div>
+        <div className="flex justify-between items-center py-4">
+          <div className="flex items-start justify-end space-x-4">
+            <Button variant="ghost" onClick={() => push("exam-management")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Exams
+            </Button>
+            <div>
+              <h1 className="text-xl font-semibold ">{exam.title}</h1>
+              <p className="text-sm text-gray-500">Live Monitoring Dashboard</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <Badge variant="destructive" className="animate-pulse">
-                <Shield className="h-3 w-3 mr-1" />
-                Live Monitoring
-              </Badge>
-            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Badge variant="destructive" className="animate-pulse">
+              <Shield className="h-3 w-3 mr-1" />
+              Live Monitoring
+            </Badge>
+          </div>
         </div>
       </header>
 
@@ -282,24 +413,27 @@ export default function ExamMonitorPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-8">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Pending Requests
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{
-                examRequests?.length || 0
-                }</div>
+              <div className="text-2xl font-bold text-orange-600">
+                {examRequests?.length || 0}
+              </div>
               <p className="text-xs text-gray-500">Need approval</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Active Sessions</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Active Sessions
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                4
-                {/* //TODO: Hard Coded */}
+                4{/* //TODO: Hard Coded */}
                 {/* {sessions.filter((s) => s.status === "active").length} */}
               </div>
               <p className="text-xs text-gray-500">Students taking exam</p>
@@ -308,12 +442,13 @@ export default function ExamMonitorPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Active Alerts
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                2
-                {/* //TODO: Hard Code */}
+                2{/* //TODO: Hard Code */}
               </div>
               <p className="text-xs text-gray-500">Unresolved alerts</p>
             </CardContent>
@@ -321,12 +456,13 @@ export default function ExamMonitorPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Flagged Students</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Flagged Students
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                1
-                {/* //TODO: Hard code */}
+                1{/* //TODO: Hard code */}
               </div>
               <p className="text-xs text-gray-500">Need attention</p>
             </CardContent>
@@ -346,7 +482,9 @@ export default function ExamMonitorPage() {
 
         <Tabs defaultValue="requests" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="requests">Join Requests ({examRequests?.length})</TabsTrigger>
+            <TabsTrigger value="requests">
+              Join Requests ({examRequests?.length})
+            </TabsTrigger>
             <TabsTrigger value="monitoring">Live Monitoring (3)</TabsTrigger>
             <TabsTrigger value="alerts">Security Alerts (3)</TabsTrigger>
           </TabsList>
@@ -354,7 +492,9 @@ export default function ExamMonitorPage() {
           <TabsContent value="requests" className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Student Join Requests</h3>
-              <div className="text-sm text-gray-500">Students requesting to join the exam</div>
+              <div className="text-sm text-gray-500">
+                Students requesting to join the exam
+              </div>
             </div>
 
             <div className="grid gap-4">
@@ -367,7 +507,11 @@ export default function ExamMonitorPage() {
                           <Users className="h-5 w-5 text-blue-600" />
                         </div>
                         <div>
-                          <h4 className="font-medium ">{request?.user.firstName + " " + request?.user.lastName}</h4>
+                          <h4 className="font-medium ">
+                            {request?.user.firstName +
+                              " " +
+                              request?.user.lastName}
+                          </h4>
                           <p className="text-sm">{request?.batchName}</p>
                         </div>
                       </div>
@@ -375,15 +519,19 @@ export default function ExamMonitorPage() {
                       <div className="flex items-center space-x-4">
                         <div className="text-right text-sm">
                           <p>Requested at</p>
-                          <p>{request?.requestDate ? formatTime(request.requestDate) : "N/A"}</p>
+                          <p>
+                            {request?.requestDate
+                              ? formatTime(request.requestDate)
+                              : "N/A"}
+                          </p>
                         </div>
 
                         <div className="flex space-x-2">
                           <Button
                             size="sm"
                             onClick={() => {
-                              setSelectedRequest(request)
-                              setIsRequestDialogOpen(true)
+                              setSelectedRequest(request);
+                              setIsRequestDialogOpen(true);
                             }}
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
@@ -400,8 +548,12 @@ export default function ExamMonitorPage() {
                 <Card>
                   <CardContent className="text-center py-12">
                     <CheckCircle className="h-12 w-12 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No pending requests</h3>
-                    <p className="text-gray-500">All join requests have been processed.</p>
+                    <h3 className="text-lg font-medium mb-2">
+                      No pending requests
+                    </h3>
+                    <p className="text-gray-500">
+                      All join requests have been processed.
+                    </p>
                   </CardContent>
                 </Card>
               )}
@@ -410,107 +562,19 @@ export default function ExamMonitorPage() {
 
           <TabsContent value="monitoring" className="space-y-6">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold ">Live Student Monitoring</h3>
-              <div className="text-sm text-gray-500">Real-time webcam feeds and session status</div>
+              <h3 className="text-lg font-semibold ">
+                Live Student Monitoring
+              </h3>
+              <div className="text-sm text-gray-500">
+                Real-time webcam feeds and session status
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {sessions.map((session) => (
-                <Card
-                  key={session.id}
-                  className={`${session.status === "flagged" ? "border-red-200 bg-red-50/30" : ""}`}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-base">{session.studentName}</CardTitle>
-                        <CardDescription>{session.batch}</CardDescription>
-                      </div>
-                      {getSessionStatusBadge(session.status)}
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    {/* Mock webcam feed */}
-                    <div className="relative">
-                      <div className="w-full h-32 bg-gray-900 rounded-lg flex items-center justify-center">
-                        <div className="text-center text-white">
-                          <Camera className="h-8 w-8 mx-auto mb-2" />
-                          <p className="text-sm">Live Webcam Feed</p>
-                          <p className="text-xs text-gray-400">{session.studentName}</p>
-                        </div>
-                      </div>
-
-                      {session.status === "active" && (
-                        <div className="absolute top-2 right-2">
-                          <div className="flex items-center space-x-1 bg-green-600 text-white px-2 py-1 rounded text-xs">
-                            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                            <span>LIVE</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Started:</span>
-                        <span className="ml-2 font-medium">{formatTime(Number(session.startTime))}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Last Activity:</span>
-                        <span className="ml-2 font-medium">{formatTime(Number(session.lastActivity))}</span>
-                      </div>
-                    </div>
-
-                    {session.cheatingAlerts.length > 0 && (
-                      <div className="space-y-2">
-                        <h5 className="text-sm font-medium text-red-600">Recent Alerts:</h5>
-                        {session.cheatingAlerts.slice(-2).map((alert) => (
-                          <div key={alert.id} className="flex items-center space-x-2 text-xs">
-                            {getAlertIcon(alert.type)}
-                            <span className="text-gray-600">{alert.description}</span>
-                            {getSeverityBadge(alert.severity)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex justify-between">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedSession(session)
-                          // Open detailed monitoring view
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
-
-                      {session.status === "active" && (
-                        <Button size="sm" variant="destructive" onClick={() => {}}>
-                          <Ban className="h-4 w-4 mr-2" />
-                          Terminate
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {sessions.length === 0 && (
-                <div className="col-span-2">
-                  <Card>
-                    <CardContent className="text-center py-12">
-                      <Eye className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No active sessions</h3>
-                      <p className="text-gray-500">No students are currently taking the exam.</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-            </div>
+            <LiveMonitoringGrid
+              students={students}
+              videoStreams={videoStreams}
+              activeSessions={activeSessions?.map((s) => s.session)}
+            />
           </TabsContent>
 
           {/* <TabsContent value="alerts" className="space-y-6">
@@ -582,7 +646,8 @@ export default function ExamMonitorPage() {
           <DialogHeader>
             <DialogTitle>Review Join Request</DialogTitle>
             <DialogDescription>
-              Verify the student&apos;s presence and approve or reject their request to join the exam.
+              Verify the student&apos;s presence and approve or reject their
+              request to join the exam.
             </DialogDescription>
           </DialogHeader>
 
@@ -591,7 +656,11 @@ export default function ExamMonitorPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium ">Student Name</label>
-                  <p className="text-sm ">{selectedRequest.user.firstName + " " + selectedRequest.user.lastName}</p>
+                  <p className="text-sm ">
+                    {selectedRequest.user.firstName +
+                      " " +
+                      selectedRequest.user.lastName}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium ">Batch</label>
@@ -601,18 +670,27 @@ export default function ExamMonitorPage() {
 
               <div>
                 <label className="text-sm font-medium ">Request Time</label>
-                <p className="text-sm ">{formatTime(selectedRequest.requestDate)}</p>
+                <p className="text-sm ">
+                  {formatTime(selectedRequest.requestDate)}
+                </p>
               </div>
             </div>
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => selectedRequest && handleRejectRequest(selectedRequest._id)}>
+            <Button
+              variant="outline"
+              onClick={() =>
+                selectedRequest && handleRejectRequest(selectedRequest._id)
+              }
+            >
               <XCircle className="h-4 w-4 mr-2" />
               Reject
             </Button>
             <Button
-              onClick={() => selectedRequest && handleApproveRequest(selectedRequest._id)}
+              onClick={() =>
+                selectedRequest && handleApproveRequest(selectedRequest._id)
+              }
               className="bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
@@ -627,7 +705,9 @@ export default function ExamMonitorPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Resolve Security Alert</DialogTitle>
-            <DialogDescription>Review and resolve this cheating detection alert.</DialogDescription>
+            <DialogDescription>
+              Review and resolve this cheating detection alert.
+            </DialogDescription>
           </DialogHeader>
 
           {selectedAlert && (
@@ -641,16 +721,22 @@ export default function ExamMonitorPage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Time:</span>
-                  <span className="ml-2">{formatTime(Number(selectedAlert.timestamp))}</span>
+                  <span className="ml-2">
+                    {formatTime(Number(selectedAlert.timestamp))}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">Confidence:</span>
-                  <span className="ml-2">{Math.round(selectedAlert.confidence * 100)}%</span>
+                  <span className="ml-2">
+                    {Math.round(selectedAlert.confidence * 100)}%
+                  </span>
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700">Resolution Notes</label>
+                <label className="text-sm font-medium text-gray-700">
+                  Resolution Notes
+                </label>
                 <Textarea
                   placeholder="Describe the action taken or reason for resolution..."
                   value={resolutionNotes}
@@ -662,10 +748,15 @@ export default function ExamMonitorPage() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAlertDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsAlertDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={() => selectedAlert && handleResolveAlert(selectedAlert)}>
+            <Button
+              onClick={() => selectedAlert && handleResolveAlert(selectedAlert)}
+            >
               <CheckCircle className="h-4 w-4 mr-2" />
               Mark as Resolved
             </Button>
@@ -673,5 +764,5 @@ export default function ExamMonitorPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

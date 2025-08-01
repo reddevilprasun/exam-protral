@@ -18,14 +18,11 @@ export default defineSchema({
 
   adminUsers: defineTable({
     userId: v.id("users"),
-    role: v.union(
-      v.literal("superadmin"),
-      v.literal("admin"),
-    )
+    role: v.union(v.literal("superadmin"), v.literal("admin")),
   }).index("uniq_user_role", ["userId", "role"]),
   // University Management
   // This table is used to manage universities and their details.
-  
+
   universities: defineTable({
     name: v.string(),
     location: v.string(),
@@ -45,32 +42,32 @@ export default defineSchema({
       v.literal("rejected")
     ),
   })
-  .index("uniq_user_university_create_request", ["userId", "universityId"])
-  .index("uniq_university_create_request", ["universityId"]),
+    .index("uniq_user_university_create_request", ["userId", "universityId"])
+    .index("uniq_university_create_request", ["universityId"]),
   // University User Roles (RBAC)
   universityRoles: defineTable({
     userId: v.id("users"),
     universityId: v.id("universities"),
-    role : v.union(
+    role: v.union(
       v.literal("student"),
       v.literal("teacher"),
       v.literal("admin"),
       v.literal("supervisor"),
-      v.literal("examcontroller"),
-    )
+      v.literal("examcontroller")
+    ),
   })
-  .index("uniq_user_university_role", ["universityId", "role"])
-  .index("uniq_user_university_role_2", ["userId", "universityId"]),
+    .index("uniq_user_university_role", ["universityId", "role"])
+    .index("uniq_user_university_role_2", ["userId", "universityId"]),
 
   userCreateRequest: defineTable({
     userId: v.id("users"),
     email: v.string(),
-    role : v.union(
+    role: v.union(
       v.literal("student"),
       v.literal("teacher"),
       v.literal("admin"),
       v.literal("supervisor"),
-      v.literal("examcontroller"),
+      v.literal("examcontroller")
     ),
     departmentId: v.optional(v.id("department")),
     courseId: v.optional(v.id("courses")),
@@ -78,20 +75,15 @@ export default defineSchema({
     universityId: v.id("universities"),
     batchId: v.optional(v.id("batches")),
     secretToken: v.string(),
-    status: v.union(
-      v.literal("active"),
-      v.literal("pending")
-    )
-  })
-  .index("uniq_user_create_request", ["universityId", "email"]),
+    status: v.union(v.literal("active"), v.literal("pending")),
+  }).index("uniq_user_create_request", ["universityId", "email"]),
 
   // Academic Structure
   department: defineTable({
     universityId: v.id("universities"),
     name: v.string(),
     description: v.optional(v.string()),
-  })
-  .index("uniq_department", ["universityId"]),
+  }).index("uniq_department", ["universityId"]),
   courses: defineTable({
     universityId: v.id("universities"),
     departmentId: v.id("department"),
@@ -101,31 +93,26 @@ export default defineSchema({
     createdAt: v.float64(),
     updatedAt: v.float64(),
   })
-  .index("uniq_course_code", ["universityId","code"])
-  .index("uniq_course_department",["departmentId"]),
+    .index("uniq_course_code", ["universityId", "code"])
+    .index("uniq_course_department", ["departmentId"]),
   batches: defineTable({
     courseId: v.id("courses"),
     name: v.string(),
     academicYear: v.string(),
     startDate: v.float64(),
     endDate: v.float64(),
-  })
-  .index("uniq_batch_course", ["courseId", "name"]),
+  }).index("uniq_batch_course", ["courseId", "name"]),
   subjects: defineTable({
     courseId: v.id("courses"),
     name: v.string(),
     code: v.string(),
-    status: v.union(
-      v.literal("active"),
-      v.literal("inactive"),
-    ),
+    status: v.union(v.literal("active"), v.literal("inactive")),
     creditHours: v.float64(),
     semester: v.float64(),
     description: v.optional(v.string()),
     createdAt: v.float64(),
     updatedAt: v.float64(),
-  })
-  .index("uniq_subject_code", ["courseId", "code"]),
+  }).index("uniq_subject_code", ["courseId", "code"]),
 
   // Student Enrollment
   studentEnrollments: defineTable({
@@ -137,8 +124,9 @@ export default defineSchema({
     universityId: v.id("universities"),
     enrollmentDate: v.float64(),
   })
-  .index("uniq_student_batch", ["batchId", "studentId"])
-  .index("uniq_student_university", ["universityId", "studentId"]),
+    .index("uniq_student_batch", ["batchId", "studentId"])
+    .index("uniq_student", ["studentId", "universityId"])
+    .index("uniq_student_university", ["universityId", "studentId"]),
   //Teaching Assignments
   teachingAssignments: defineTable({
     teacherId: v.id("users"),
@@ -147,8 +135,8 @@ export default defineSchema({
     departmentId: v.id("department"),
     assignmentDate: v.float64(),
   })
-  .index("uniq_teacher_batch_subject", ["teacherId", "subjectId"])
-  .index("uniq_teacher_university", ["teacherId", "departmentId"]),
+    .index("uniq_teacher_batch_subject", ["teacherId", "subjectId"])
+    .index("uniq_teacher_university", ["teacherId", "departmentId"]),
 
   // Question Bank
   questions: defineTable({
@@ -159,13 +147,10 @@ export default defineSchema({
       v.literal("mcq"),
       v.literal("saq"),
       v.literal("true_false"),
-      v.literal("fill_in_the_blank"),
+      v.literal("fill_in_the_blank")
     ),
     tags: v.optional(v.array(v.string())),
-    status: v.union(
-      v.literal("active"),
-      v.literal("inactive"),
-    ),
+    status: v.union(v.literal("active"), v.literal("inactive")),
     // For MCQs
     options: v.optional(
       v.array(
@@ -188,9 +173,9 @@ export default defineSchema({
     createdAt: v.float64(),
     updatedAt: v.float64(),
   })
-  .index("uniq_question_subject_teacher", ["subjectId", "createdBy"])
-  .index("uniq_question_type", ["questionType", "subjectId"])
-  .index("uniq_teacher_question", ["createdBy"]),
+    .index("uniq_question_subject_teacher", ["subjectId", "createdBy"])
+    .index("uniq_question_type", ["questionType", "subjectId"])
+    .index("uniq_teacher_question", ["createdBy"]),
   questionGroups: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
@@ -203,14 +188,12 @@ export default defineSchema({
     ),
     tags: v.optional(v.array(v.string())),
     intendedUse: v.string(), // e.g., "exam", "quiz", "practice"
-    selectedQuestions: v.optional(
-      v.array(v.id("questions"))
-    ),
+    selectedQuestions: v.optional(v.array(v.id("questions"))),
     createdAt: v.float64(),
     updatedAt: v.float64(),
   })
-  .index("uniq_question_group", ["subjectId", "title"])
-  .index("uniq_teacher_question_group", ["createdBy", "subjectId", "title"]),
+    .index("uniq_question_group", ["subjectId", "title"])
+    .index("uniq_teacher_question_group", ["createdBy", "subjectId", "title"]),
 
   // Exam Management
   exams: defineTable({
@@ -249,10 +232,37 @@ export default defineSchema({
     maxMarks: v.float64(),
     passingMarks: v.float64(),
   })
-  .index("uniq_exam", ["subjectId", "title"])
-  .index("uniq_exam_teacher", ["createdBy", "subjectId", "title"])
-  .index("uniq_exam_teacher_and_invigilator", ["invigilator"])
-  .index("uniq_exam_by_subject", ["subjectId"]),
+    .index("uniq_exam", ["subjectId", "title"])
+    .index("uniq_exam_teacher", ["createdBy", "subjectId", "title"])
+    .index("uniq_exam_teacher_and_invigilator", ["invigilator"])
+    .index("uniq_exam_by_subject", ["subjectId"]),
+
+  proctoringSessions: defineTable({
+    examId: v.id("exams"),
+    studentId: v.id("users"),
+    // A unique ID for each connection attempt, generated on the client
+    connectionId: v.string(),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+  }).index("by_student_and_exam", ["studentId", "examId"]),
+
+  proctoringSignals: defineTable({
+    examId: v.id("exams"),
+    senderId: v.id("users"),
+    recipientId: v.id("users"),
+    connectionId: v.string(),
+    type: v.union(
+      v.literal("offer"),
+      v.literal("answer"),
+      v.literal("candidate"),
+      v.literal("restart")
+    ),
+    // The signal data itself, stored as a JSON string
+    data: v.string(),
+  })
+    .index("by_recipient", ["recipientId", "examId"])
+    .index("by_sender_and_exam", ["senderId", "examId"])
+    .index("by_connectionId", ["connectionId"])
+    .index("by_exam_and_type", ["examId", "type"]),
 
   examRequests: defineTable({
     userId: v.id("users"),
@@ -266,9 +276,41 @@ export default defineSchema({
     responseDate: v.optional(v.float64()),
     responseMessage: v.optional(v.string()),
   })
-  .index("uniq_exam_request", ["userId", "examId"])
-  .index("uniq_exam_request_by_exam_by_status", ["examId", "status"]),
+    .index("uniq_exam_request", ["userId", "examId"])
+    .index("uniq_exam_request_by_exam_by_status", ["examId", "status"]),
+
   // Exam Attempts & Results
+  studentAnswers: defineTable({
+    studentId: v.id("users"),
+    examId: v.id("exams"),
+    examStartTime: v.optional(v.float64()),
+    // We'll store answers as a map of questionId -> answer
+    answers: v.any(), // v.any() is flexible for different answer types
+    status: v.union(v.literal("in_progress"), v.literal("submitted"),v.literal("not_started")),
+  })
+    // This index is crucial for quickly finding a student's answer sheet
+    .index("by_student_and_exam", ["studentId", "examId"]),
+
+  // To store the final, graded results
+  examResults: defineTable({
+    studentId: v.id("users"),
+    examId: v.id("exams"),
+    score: v.number(),
+    totalMarks: v.number(),
+    submittedAt: v.float64(),
+    // We'll store a detailed breakdown of each answer
+    gradedAnswers: v.array(
+      v.object({
+        questionId: v.id("questions"),
+        questionText: v.string(),
+        studentAnswer: v.any(),
+        correctAnswer: v.any(),
+        isCorrect: v.boolean(),
+        marksAwarded: v.number(),
+      })
+    ),
+  }).index("by_student_and_exam", ["studentId", "examId"])
+  .index("by_student", ["studentId"]),
   examAttempts: defineTable({
     studentId: v.id("users"),
     examId: v.id("exams"),
@@ -283,26 +325,5 @@ export default defineSchema({
     ),
     score: v.float64(),
     totalMarks: v.float64(),
-  })
-  .index("uniq_student_exam", ["studentId", "examId"]),
-  studentAnswer: defineTable({
-    attemptId: v.id("examAttempts"),
-    questionId: v.id("questions"),
-    selectedAnswer: v.string(),
-    answerText: v.optional(v.string()),
-    marksAwarded: v.float64(),
-    createdAt: v.float64(),
-    updatedAt: v.float64(),
-  })
-  .index("uniq_student_answer", ["attemptId", "questionId"]),
-  examResults: defineTable({
-    attemptId: v.id("examAttempts"),
-    totalMarks: v.float64(),
-    obtainedMarks: v.float64(),
-    grade: v.string(),
-    percentage: v.float64(),
-    feedback: v.optional(v.string()),
-    publishedAt: v.float64(),
-  })
-  .index("uniq_exam_result", ["attemptId"]),
+  }).index("uniq_student_exam", ["studentId", "examId"]),
 });

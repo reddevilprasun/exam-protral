@@ -92,7 +92,8 @@ export default function LandingPage() {
                     description: "University gains access to manage teachers, students, and exams through a powerful, role-based dashboard.",
                     icon: <Monitor className="h-8 w-8 text-purple-600" />
                   }
-                ].map((item, index) => (
+                ]
+                .map((item, index) => (
                   <div key={index} className="relative">
                     <Card className="h-full border-0 shadow-lg hover:shadow-xl transition-shadow">
                       <CardHeader className="text-center pb-4">
@@ -264,7 +265,8 @@ export default function LandingPage() {
                       "Custom integrations",
                       "White-label options",
                       "SLA guarantee"
-                    ].map((feature, index) => (
+                    ]
+                    .map((feature, index) => (
                       <div key={index} className="flex items-center gap-3">
                         <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
                         <span className="text-gray-600">{feature}</span>

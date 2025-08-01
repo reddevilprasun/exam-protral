@@ -8,8 +8,6 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-  School,
-  User,
   Bell,
   Eye,
 } from "lucide-react";
@@ -34,6 +32,8 @@ import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { useCreateExamRequest } from "../../(dashboard)/[universityId]/[role]/[userId]/exam-management/api/use-create-examRequest";
 import { ConvexError } from "convex/values";
+import { useQuery } from "convex/react";
+import { useMemo } from "react";
 
 interface StudentDashboardProps {
   user: FunctionReturnType<typeof api.user.UserInfo>;
@@ -51,8 +51,18 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
 
   const { mutated: createExamRequest, isPending: isCreatingRequest } =
     useCreateExamRequest();
+  
+  const attemptedExamResults = useQuery(
+    api.exam.getAllResultsForAStudent,
+    user?.id ? { studentId: user.id } : "skip"
+  );
+  const attemptedExamIds = useMemo(() => {
+    return new Set(attemptedExamResults?.map(res => res.examId));
+  }, [attemptedExamResults]);
+  
 
   const isLoading = isLoadingCurrentStudent || isLoadingExams;
+  const isPending = isCreatingRequest;
 
   const handleRequestJoin = async (examId: Id<"exams">) => {
     const exam = initialExams?.find((e) => e._id === examId);
@@ -72,13 +82,13 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
       return;
     }
 
-    if (!currentStudent) {
+    if (!currentStudent || !user) {
       return;
     }
     // Create join request
     const requestData = {
       examId,
-      userId: currentStudent?.user._id, // Add userId to match the expected type
+      userId: user.id, // Add userId to match the expected type
     };
 
     createExamRequest(requestData, {
@@ -254,6 +264,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
               const status = exam.status;
               const request = exam.studentRequest;
               const canJoin = canRequestJoin(exam);
+              const isAttempted = attemptedExamIds.has(exam._id);
 
               return (
                 <Card
@@ -310,9 +321,9 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
 
                       <div className="flex space-x-2">
                         {request?.status === "approved" &&
-                          status === "ongoing" && (
+                          status === "ongoing" && !isAttempted && (
                             <Button
-                              onClick={() => {}}
+                              onClick={() => router.push(`/take-exam/${exam._id}`)}
                               className="bg-green-600 hover:bg-green-700"
                             >
                               <Eye className="h-4 w-4 mr-2" />
@@ -324,6 +335,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                           <Button
                             onClick={() => handleRequestJoin(exam._id)}
                             variant="outline"
+                            disabled={isPending}
                           >
                             Request to Join
                           </Button>
@@ -343,7 +355,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                           </Button>
                         )}
 
-                        {status === "completed" && (
+                        {(status === "completed" || isAttempted) &&(
                           <Button variant="outline" onClick={() => {}}>
                             View Results
                           </Button>
