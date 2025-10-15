@@ -326,4 +326,31 @@ export default defineSchema({
     score: v.float64(),
     totalMarks: v.float64(),
   }).index("uniq_student_exam", ["studentId", "examId"]),
+  cheatingAlerts: defineTable({
+    examId: v.id("exams"),
+    studentId: v.id("users"),
+    proctoringSessionId: v.optional(v.id("proctoringSessions")), // Link to the specific session
+    type: v.union(
+      v.literal("phone_detected"),
+      v.literal("looking_away"),
+      v.literal("multiple_faces"),
+      v.literal("no_face"),
+      v.literal("suspicious_movement"),
+      v.literal("audio_detected"),
+      v.literal("tab_switch"),
+      v.literal("fullscreen_exit")
+    ),
+    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    timestamp: v.float64(), // Use float64 for Date.now()
+    confidence: v.float64(),
+    description: v.string(),
+    resolved: v.boolean(),
+    // Optional fields for when an invigilator resolves the alert
+    resolvedBy: v.optional(v.id("users")),
+    resolvedAt: v.optional(v.float64()),
+    notes: v.optional(v.string()),
+})
+// This index is crucial for performance. It lets the invigilator quickly
+// find all unresolved alerts for a specific exam.
+.index("by_exam_and_resolved", ["examId", "resolved"]),
 });

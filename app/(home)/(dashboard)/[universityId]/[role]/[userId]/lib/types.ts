@@ -3,7 +3,6 @@ import { useGetBatch } from "../batch-management/api/use-get-batch";
 import { useGetTeacherQuestion } from "../question-bank/api/use-getTeacher-question";
 import { useGetTeacherQuestionGroups } from "../question-bank/api/use-getTeacher-questionGroup";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 
 export type QuestionType = NonNullable<
   ReturnType<typeof useGetTeacherQuestion>["data"]
@@ -28,30 +27,9 @@ export type ExamRequest = NonNullable<FunctionReturnType<typeof api.exam.getExam
 // TODO: Remove this when the API is ready
 // Exam Mock Security Types
 
-export interface CheatingAlert {
-  id: number
-  sessionId: number
-  examId: Id<"exams">
-  studentId: string
-  type:
-    | "phone_detected"
-    | "looking_away"
-    | "multiple_faces"
-    | "no_face"
-    | "suspicious_movement"
-    | "audio_detected"
-    | "tab_switch"
-    | "fullscreen_exit"
-  severity: "low" | "medium" | "high"
-  timestamp: string
-  confidence: number
-  description: string
-  screenshot?: string
-  resolved: boolean
-  resolvedBy?: number
-  resolvedAt?: string
-  notes?: string
-}
+export type CheatingAlert = NonNullable<
+  FunctionReturnType<typeof api.alerts.getUnresolvedAlertsForExam>
+>[number];
 
 export interface StudentSession {
   id: number
@@ -155,30 +133,6 @@ export interface StudentSession {
   submittedAt?: string
 }
 
-export interface CheatingAlert {
-  id: number
-  sessionId: number
-  examId: Id<"exams">
-  studentId: string
-  type:
-    | "phone_detected"
-    | "looking_away"
-    | "multiple_faces"
-    | "no_face"
-    | "suspicious_movement"
-    | "audio_detected"
-    | "tab_switch"
-    | "fullscreen_exit"
-  severity: "low" | "medium" | "high"
-  timestamp: string
-  confidence: number
-  description: string
-  screenshot?: string
-  resolved: boolean
-  resolvedBy?: number
-  resolvedAt?: string
-  notes?: string
-}
 
 export interface WebcamMonitoringData {
   faceCount: number

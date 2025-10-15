@@ -52,15 +52,11 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 export default function ExamMonitorPage() {
-  const { push, buildPath } = useTeacherRouter();
+  const { push } = useTeacherRouter();
   const params = useParams();
   const examId = params.examId as Id<"exams">;
   //TODO: Mock Data Implement later
   const [sessions, setSessions] = useState<StudentSession[]>([]);
-  const [selectedSession, setSelectedSession] = useState<StudentSession | null>(
-    null
-  );
-  const [verificationNotes, setVerificationNotes] = useState("");
   const [resolutionNotes, setResolutionNotes] = useState("");
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
@@ -76,12 +72,17 @@ export default function ExamMonitorPage() {
 
   const { data: examRequests, isLoading: requestsLoading } =
     useGetExamRequests(examId);
+  
+    const activeAlerts = useQuery(api.alerts.getUnresolvedAlertsForExam, { examId });
+    const resolveAlertMutation = useMutation(api.alerts.resolveCheatingAlert);
 
   const isLoading = examLoading || teacherLoading || requestsLoading;
 
   //Mutations
   const { mutated: changeExamRequestStatus, isPending: isChangingRequest } =
     useChangeExamRequest();
+
+  const isPending = isChangingRequest;
 
   useEffect(() => {
     if (exam && exam.invigilator !== currentTeacher?.id) {
@@ -159,9 +160,14 @@ export default function ExamMonitorPage() {
     );
   };
 
-  const handleResolveAlert = (alert: any) => {
-    //TODO: Implement alert resolution logic
-  };
+  const handleResolveAlert = (notes: string) => {
+    if (!selectedAlert) return;
+    resolveAlertMutation({
+        alertId: selectedAlert._id,
+        notes: notes,
+    });
+    setIsAlertDialogOpen(false); // Close the dialog
+}
 
   const getAlertIcon = (type: CheatingAlert["type"]) => {
     switch (type) {
@@ -200,29 +206,6 @@ export default function ExamMonitorPage() {
         return <Badge variant="outline">Low</Badge>;
       default:
         return <Badge variant="outline">{severity}</Badge>;
-    }
-  };
-
-  const getSessionStatusBadge = (status: StudentSession["status"]) => {
-    switch (status) {
-      case "active":
-        return (
-          <Badge variant="default" className="bg-green-600">
-            Active
-          </Badge>
-        );
-      case "flagged":
-        return (
-          <Badge variant="destructive" className="animate-pulse">
-            Flagged
-          </Badge>
-        );
-      case "completed":
-        return <Badge variant="outline">Completed</Badge>;
-      case "terminated":
-        return <Badge variant="destructive">Terminated</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -433,8 +416,11 @@ export default function ExamMonitorPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                4{/* //TODO: Hard Coded */}
-                {/* {sessions.filter((s) => s.status === "active").length} */}
+                {
+                  activeSessions?.filter(
+                    (s) => s.session.status === "active"
+                  ).length || 0
+                }
               </div>
               <p className="text-xs text-gray-500">Students taking exam</p>
             </CardContent>
@@ -448,7 +434,7 @@ export default function ExamMonitorPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                2{/* //TODO: Hard Code */}
+                {activeAlerts?.length || 0}
               </div>
               <p className="text-xs text-gray-500">Unresolved alerts</p>
             </CardContent>
@@ -470,23 +456,27 @@ export default function ExamMonitorPage() {
         </div>
 
         {/* Active Alerts Banner */}
-        {/* {activeAlerts.length > 0 && (
+        {activeAlerts && activeAlerts?.length > 0 && (
           <Alert className="mb-6 border-red-200 bg-red-50">
             <AlertTriangle className="h-4 w-4 text-red-600" />
             <AlertTitle className="text-red-800">Active Security Alerts</AlertTitle>
             <AlertDescription className="text-red-700">
-              {activeAlerts.length} unresolved cheating alerts require your immediate attention.
+              {activeAlerts?.length} unresolved cheating alerts require your immediate attention.
             </AlertDescription>
           </Alert>
-        )} */}
+        )}
 
         <Tabs defaultValue="requests" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="requests">
               Join Requests ({examRequests?.length})
             </TabsTrigger>
-            <TabsTrigger value="monitoring">Live Monitoring (3)</TabsTrigger>
-            <TabsTrigger value="alerts">Security Alerts (3)</TabsTrigger>
+            <TabsTrigger value="monitoring">Live Monitoring
+              ({students?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="alerts">Security Alerts 
+              ({activeAlerts?.length || 0})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="space-y-6">
@@ -577,17 +567,17 @@ export default function ExamMonitorPage() {
             />
           </TabsContent>
 
-          {/* <TabsContent value="alerts" className="space-y-6">
+          <TabsContent value="alerts" className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-gray-900">Security Alerts</h3>
               <div className="text-sm text-gray-500">AI-detected cheating behaviors</div>
             </div>
 
             <div className="grid gap-4">
-              {activeAlerts.map((alert) => {
-                const session = sessions.find((s) => s.id === alert.sessionId)
+              {activeAlerts?.map((alert) => {
+                
                 return (
-                  <Card key={alert.id} className="border-red-200 bg-red-50/30">
+                  <Card key={alert._id} className="border-red-200 bg-red-50/30">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-4">
@@ -596,7 +586,7 @@ export default function ExamMonitorPage() {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-1">
-                              <h4 className="font-medium text-gray-900">{session?.studentName}</h4>
+                              <h4 className="font-medium text-gray-900">{alert.studentName}</h4>
                               {getSeverityBadge(alert.severity)}
                             </div>
                             <p className="text-sm text-gray-600 mb-2">{alert.description}</p>
@@ -626,7 +616,7 @@ export default function ExamMonitorPage() {
                 )
               })}
 
-              {activeAlerts.length === 0 && (
+              {activeAlerts?.length === 0 && (
                 <Card>
                   <CardContent className="text-center py-12">
                     <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -636,7 +626,7 @@ export default function ExamMonitorPage() {
                 </Card>
               )}
             </div>
-          </TabsContent> */}
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -683,6 +673,7 @@ export default function ExamMonitorPage() {
               onClick={() =>
                 selectedRequest && handleRejectRequest(selectedRequest._id)
               }
+              disabled={isPending}
             >
               <XCircle className="h-4 w-4 mr-2" />
               Reject
@@ -691,6 +682,7 @@ export default function ExamMonitorPage() {
               onClick={() =>
                 selectedRequest && handleApproveRequest(selectedRequest._id)
               }
+              disabled={isPending}
               className="bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
@@ -755,7 +747,7 @@ export default function ExamMonitorPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => selectedAlert && handleResolveAlert(selectedAlert)}
+              onClick={() => selectedAlert && handleResolveAlert(resolutionNotes)}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               Mark as Resolved

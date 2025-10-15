@@ -74,7 +74,7 @@ export const calculateExamResult = internalAction({
     // 3. Loop through each question and grade it based on its type
     for (const question of exam.questionsDoc) {
       if (!question) continue;
-      const studentAnswerRaw = answerSheet.answers[question._id];
+      const studentAnswerRaw = answerSheet.answers[question._id] ?? null;
       let isCorrect = false;
       let correctAnswer: any = null;
       let marksAwarded = 0;

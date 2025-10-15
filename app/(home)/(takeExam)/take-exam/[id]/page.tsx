@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -79,7 +79,7 @@ export default function TakeExamPage() {
   //const [exam, setExam] = useState<Exam | null>(null);
   const [questions, setQuestions] = useState<QuestionType[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
-  const [answers, setAnswers] = useState<Record<Id<"questions">, any>>({});
+  const [answers, setAnswers] = useState<Record<Id<"questions">, string | number | boolean>>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<
     Set<Id<"questions">>
   >(new Set());
@@ -92,7 +92,9 @@ export default function TakeExamPage() {
   const [hasRequested, setHasRequested] = useState(false);
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [securityViolations, setSecurityViolations] = useState<string[]>([]);
-  const [cheatingAlerts, setCheatingAlerts] = useState<CheatingAlert[]>([]);
+  type CheatingAlertInput = Omit<CheatingAlert, "_id" | "_creationTime" | "studentName" | "resolvedBy" | "proctoringSessionId">;
+
+  const [cheatingAlerts, setCheatingAlerts] = useState<CheatingAlertInput[]>([]);
   const [, setIsFullScreen] = useState(false);
 
   const fullScreenRef = useRef<HTMLDivElement>(null);
@@ -110,6 +112,8 @@ export default function TakeExamPage() {
 
   const { mutated: createExamRequest, isPending: isCreatingRequest } =
     useCreateExamRequest();
+
+    const logAlertMutation = useMutation(api.alerts.logCheatingAlert);
 
   const examState = useQuery(
     api.exam.getExamStateForStudent,
@@ -201,16 +205,48 @@ export default function TakeExamPage() {
     detectionStats,
   } = useWebcamMonitoring({
     onCheatingAlert: (alert) => {
+      logAlertMutation({
+        examId: alert.examId,
+        type: alert.type,
+        severity: alert.severity,
+        timestamp: new Date(alert.timestamp).getTime(), // Convert ISO string to number
+        confidence: alert.confidence,
+        description: alert.description,
+      });
       setCheatingAlerts((prev) => [...prev, { ...alert, id: Date.now() }]);
       toast.error("Security Alert", {
         description: alert.description,
       });
     },
-    studentId: currentStudent?.id || "",
+    studentId: currentStudent!.id,
     examId: exam?._id || (params.id as Id<"exams">),
-    sessionId: sessionId.current,
     invigilatorId: exam?.invigilator,
   });
+
+  // Define handleAutoSubmit with useCallback to prevent dependency issues
+  const handleAutoSubmit = useCallback(async (reason: string) => {
+    try {
+      // ✅ 1. Call the backend mutation with any final, unsaved answers
+      await saveAnswersMutation({ examId, changedAnswers: answers, status: "submitted" });
+      await submitExamMutation({
+        examId,
+      });
+
+      // ✅ 2. After the mutation is successful, clean up the UI
+      stopWebcam();
+      setExamPhase("submitted");
+
+      toast("Exam auto-submitted", {
+        description: `Your exam was auto-submitted due to: ${reason}`,
+      });
+
+      // // ✅ 3. Navigate to the results page
+      // router.push(`/exam/${examId}/results`);
+    } catch (error) {
+      console.error("Failed to auto-submit exam:", error);
+      toast.error("There was a problem auto-submitting your exam.");
+    }
+  }, [examId, answers, saveAnswersMutation, submitExamMutation, stopWebcam]);
 
   // Exam security
   const {
@@ -218,7 +254,6 @@ export default function TakeExamPage() {
     violations,
     enterFullscreen,
     exitFullscreen,
-    reportViolation,
   } = useExamSecurity({
     onViolation: (violation) => {
       setSecurityViolations((prev) => [...prev, violation.description]);
@@ -249,7 +284,7 @@ export default function TakeExamPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [examPhase, timeLeft]);
+  }, [examPhase, timeLeft, handleAutoSubmit]);
 
   // Auto-save answers
   useEffect(() => {
@@ -267,7 +302,7 @@ export default function TakeExamPage() {
     if (examPhase === "active") {
       startWebcam();
     }
-  }, [examPhase]);
+  }, [examPhase, startWebcam]);
 
   // Handle fullscreen changes
   useEffect(() => {
@@ -354,7 +389,7 @@ export default function TakeExamPage() {
     }
   };
 
-  const handleAnswerChange = (questionId: Id<"questions">, answer: any) => {
+  const handleAnswerChange = (questionId: Id<"questions">, answer: string | number | boolean) => {
     setAnswers((prev) => ({
       ...prev,
       [questionId]: answer,
@@ -404,30 +439,6 @@ export default function TakeExamPage() {
     }
   };
 
-  const handleAutoSubmit = async (reason: string) => {
-    try {
-      // ✅ 1. Call the backend mutation with any final, unsaved answers
-      await saveAnswersMutation({ examId, changedAnswers: answers, status: "submitted" });
-      await submitExamMutation({
-        examId,
-      });
-
-      // ✅ 2. After the mutation is successful, clean up the UI
-      stopWebcam();
-      await exitFullscreen();
-      setExamPhase("submitted");
-
-      toast("Exam auto-submitted", {
-        description: `Your exam was auto-submitted due to: ${reason}`,
-      });
-
-      // // ✅ 3. Navigate to the results page
-      // router.push(`/exam/${examId}/results`);
-    } catch (error) {
-      console.error("Failed to auto-submit exam:", error);
-      toast.error("There was a problem auto-submitting your exam.");
-    }
-  };
 
   const formatTimeLeft = () => {
     if (timeLeft === null || timeLeft < 0) return "00:00";
@@ -483,7 +494,7 @@ export default function TakeExamPage() {
   // If exam is not loaded yet, show loading state
   if (isLoading) return <Loading />;
 
-  if (!exam) {
+  if (!exam || !currentStudent) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -1079,7 +1090,7 @@ export default function TakeExamPage() {
                     {(question.questionType === "saq" ||
                       question.questionType === "fill_in_the_blank") && (
                       <Input
-                        value={answers[question._id] || ""}
+                        value={typeof answers[question._id] === "string" ? answers[question._id] as string : ""}
                         onChange={(e) =>
                           handleAnswerChange(question._id, e.target.value)
                         }

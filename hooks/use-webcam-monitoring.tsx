@@ -5,6 +5,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import * as blazeface from "@tensorflow-models/blazeface";
 import * as cocossd from "@tensorflow-models/coco-ssd";
 import "@tensorflow/tfjs-backend-webgl";
+import '@tensorflow/tfjs-backend-cpu';
 import { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -25,17 +26,18 @@ export interface DetectionStats {
   noFaceDetections: number;
 }
 
+type CheatingAlertInput = Omit<CheatingAlert, "_id" | "_creationTime" | "studentName" | "resolvedBy" | "proctoringSessionId">;
+
 interface Options {
-  onCheatingAlert: (alert: Omit<CheatingAlert, "id">) => void;
-  studentId: string;
+  onCheatingAlert: (alert: CheatingAlertInput) => void;
+  studentId: Id<"users">;
   examId: Id<"exams">;
-  sessionId: number;
   isInvigilatorView?: boolean;
   invigilatorId?: Id<"users">;
 }
 
 const ALERT_COOLDOWN = 300000; // 5 minutes
-const PHONE_CONFIDENCE = 0.55; // Lowered confidence threshold
+const PHONE_CONFIDENCE = 0.45; // Lowered confidence threshold
 const CONSECUTIVE_NO_FACE_THRESHOLD = 10; // 1 second at 10fps
 const LOOKING_AWAY_THRESHOLD = 20; // Degrees threshold
 
@@ -56,7 +58,6 @@ export function useWebcamMonitoring({
   onCheatingAlert,
   studentId,
   examId,
-  sessionId,
   isInvigilatorView = false,
   invigilatorId,
 }: Options) {
@@ -160,11 +161,7 @@ export function useWebcamMonitoring({
 
   const triggerAlert = useCallback(
     (
-      alertType:
-        | "phone_detected"
-        | "looking_away"
-        | "multiple_faces"
-        | "no_face",
+      alertType:  CheatingAlert["type"],
       description: string,
       severity: "low" | "medium" | "high"
     ) => {
@@ -177,14 +174,13 @@ export function useWebcamMonitoring({
         severity,
         description,
         confidence: 0.85,
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
         examId,
         studentId,
-        sessionId,
         resolved: false,
       });
     },
-    [onCheatingAlert, examId, studentId, sessionId, canTriggerAlert]
+    [onCheatingAlert, examId, studentId, canTriggerAlert]
   );
 
   /* ------------------------------------------------------------------ */
@@ -399,7 +395,10 @@ export function useWebcamMonitoring({
               normalizedClass.includes("electronic") ||
               normalizedClass.includes("device") ||
               normalizedClass.includes("laptop") ||
-              normalizedClass.includes("tablet")) &&
+              normalizedClass.includes("tablet") ||
+              normalizedClass.includes("remote") ||
+            normalizedClass.includes("screen")
+            ) &&
             obj.score > PHONE_CONFIDENCE
           );
         });

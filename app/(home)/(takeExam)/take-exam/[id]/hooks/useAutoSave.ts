@@ -1,15 +1,18 @@
 // hooks/useAutoSave.ts
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+
+// Define the possible answer types based on question types
+type AnswerValue = string | number | boolean;
 
 // This hook tracks changes and saves them periodically.
 export function useAutoSave(examId: Id<"exams">) {
   const saveAnswersMutation = useMutation(api.answers.saveStudentAnswers);
   
   // This state holds only the answers that have changed since the last save.
-  const [dirtyAnswers, setDirtyAnswers] = useState<Record<string, any>>({});
+  const [dirtyAnswers, setDirtyAnswers] = useState<Record<string, AnswerValue>>({});
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -29,7 +32,7 @@ export function useAutoSave(examId: Id<"exams">) {
   }, [examId, saveAnswersMutation, dirtyAnswers]);
 
   // Call this function whenever an answer changes in your UI.
-  const markAnswerAsDirty = (questionId: string, answer: any) => {
+  const markAnswerAsDirty = (questionId: string, answer: AnswerValue) => {
     setDirtyAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
